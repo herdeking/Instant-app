@@ -1,41 +1,19 @@
-// firebaseConfig.js
-// Paste your Firebase project config below (same project as instantlivefootball.com.ng)
-// Find this in Firebase Console > Project Settings > General > Your apps > SDK setup and config
-
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { initializeAuth, getReactNativePersistence, getAuth } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
 
 const firebaseConfig = {
-  apiKey: 'YOUR_API_KEY',
+  apiKey: 'AIzaSyC7DzEQEgpeyBcsUo_QaKl7faeYRer8e2E',
   authDomain: 'instantlivefootball.firebaseapp.com',
   projectId: 'instantlivefootball',
-  storageBucket: 'instantlivefootball.appspot.com',
-  messagingSenderId: 'YOUR_SENDER_ID',
-  appId: 'YOUR_APP_ID',
+  storageBucket: 'instantlivefootball.firebasestorage.app',
+  messagingSenderId: '584488048641',
+  appId: '1:584488048641:web:7adf83799426222a5fc800',
 };
 
-// Avoid re-initializing on fast refresh
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-
-// Auth needs AsyncStorage persistence on native, but web uses default persistence
-let auth;
-if (Platform.OS === 'web') {
-  auth = getAuth(app);
-} else {
-  try {
-    auth = initializeAuth(app, {
-      persistence: getReactNativePersistence(AsyncStorage),
-    });
-  } catch (e) {
-    // initializeAuth throws if already called (e.g. hot reload) — fall back to getAuth
-    auth = getAuth(app);
-  }
-}
-
+const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
