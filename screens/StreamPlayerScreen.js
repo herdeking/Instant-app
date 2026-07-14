@@ -1,12 +1,10 @@
-// screens/StreamPlayerScreen.js
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-// Receives the match object via navigation params, plays match.streamLink
 export default function StreamPlayerScreen({ route }) {
   const { match } = route.params || {};
-  const streamLink = match?.streamLink;
+  const streamLink = match?.stream;
 
   if (!streamLink) {
     return (
@@ -19,16 +17,9 @@ export default function StreamPlayerScreen({ route }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>{match.homeTeam} vs {match.awayTeam}</Text>
+        <Text style={styles.title}>{match.home} vs {match.away}</Text>
       </View>
-      <WebView
-        source={{ uri: streamLink }}
-        style={styles.webview}
-        allowsFullscreenVideo
-        mediaPlaybackRequiresUserAction={false}
-        javaScriptEnabled
-        domStorageEnabled
-      />
+      <WebView source={{ uri: streamLink }} style={styles.webview} allowsFullscreenVideo mediaPlaybackRequiresUserAction={false} javaScriptEnabled domStorageEnabled />
     </View>
   );
 }

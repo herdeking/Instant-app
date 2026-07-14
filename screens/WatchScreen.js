@@ -1,48 +1,30 @@
-// screens/WatchScreen.js
 import React, { useEffect, useState } from 'react';
 import { View, FlatList, StyleSheet, Text, ActivityIndicator, RefreshControl } from 'react-native';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import MatchCard from '../components/MatchCard';
 
-// Assumes a "matches" collection where documents with isLive: true (and a streamLink) show here.
-// Adjust the query field names once your Firestore schema is finalized.
 export default function WatchScreen({ navigation }) {
   const [liveMatches, setLiveMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    const q = query(
-      collection(db, 'matches'),
-      where('isLive', '==', true)
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setLiveMatches(data);
-        setLoading(false);
-        setRefreshing(false);
-      },
-      (error) => {
-        console.error('Error fetching live matches:', error);
-        setLoading(false);
-        setRefreshing(false);
-      }
-    );
-
+    const q = query(collection(db, 'matches'), where('status', '==', 'live'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setLiveMatches(data);
+      setLoading(false);
+      setRefreshing(false);
+    }, (error) => {
+      console.error(error);
+      setLoading(false);
+      setRefreshing(false);
+    });
     return unsubscribe;
   }, []);
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#22C55E" />
-      </View>
-    );
-  }
+  if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#22C55E" /></View>;
 
   return (
     <View style={styles.container}>
@@ -50,14 +32,9 @@ export default function WatchScreen({ navigation }) {
         data={liveMatches}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingVertical: 12 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => setRefreshing(true)} tintColor="#22C55E" />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => setRefreshing(true)} tintColor="#22C55E" />}
         renderItem={({ item }) => (
-          <MatchCard
-            match={item}
-            onPress={() => navigation.navigate('StreamPlayer', { match: item })}
-          />
+          <MatchCard match={item} onPress={() => navigation.navigate('StreamPlayer', { match: item })} />
         )}
         ListEmptyComponent={
           <View style={styles.center}>
