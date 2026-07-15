@@ -2,20 +2,31 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { COLORS } from '../theme';
 
-function useTeamLogo(teamName) {
-  const [logo, setLogo] = useState(null);
+// Global cache to avoid re-fetching logos
+const logoCache = {};
+
+function useTeamLogo(teamName, existingLogo) {
+  const [logo, setLogo] = useState(existingLogo || logoCache[teamName] || null);
+
   useEffect(() => {
+    if (existingLogo) { setLogo(existingLogo); return; }
     if (!teamName) return;
+    if (logoCache[teamName]) { setLogo(logoCache[teamName]); return; }
+
     fetch(`https://v3.football.api-sports.io/teams?search=${encodeURIComponent(teamName)}`, {
       headers: { 'x-apisports-key': '14fc22d6286abe7f65bd37725b8fb926' },
     })
       .then((r) => r.json())
       .then((data) => {
         const team = data?.response?.[0]?.team;
-        if (team?.logo) setLogo(team.logo);
+        if (team?.logo) {
+          logoCache[teamName] = team.logo;
+          setLogo(team.logo);
+        }
       })
       .catch(() => {});
-  }, [teamName]);
+  }, [teamName, existingLogo]);
+
   return logo;
 }
 
@@ -38,11 +49,9 @@ function LivePulse() {
 }
 
 export default function MatchCard({ match, onPress }) {
-  const { home, away, homeLogo, awayLogo, date, status, hscore, ascore, comp } = match;
-  const fetchedHomeLogo = useTeamLogo(!homeLogo ? home : null);
-  const fetchedAwayLogo = useTeamLogo(!awayLogo ? away : null);
-  const finalHomeLogo = homeLogo || fetchedHomeLogo;
-  const finalAwayLogo = awayLogo || fetchedAwayLogo;
+  const { home, away, homeLogo, awayLogo, date, status, hscore, ascore, comp, minute } = match;
+  const finalHomeLogo = useTeamLogo(home, homeLogo);
+  const finalAwayLogo = useTeamLogo(away, awayLogo);
   const isLive = status === 'live';
   const isFinished = status === 'finished';
 
@@ -57,23 +66,33 @@ export default function MatchCard({ match, onPress }) {
       ) : isLive ? (
         <View style={styles.compRow}><LivePulse /></View>
       ) : null}
+
       <View style={styles.row}>
         <View style={styles.team}>
-          {finalHomeLogo ? <Image source={{ uri: finalHomeLogo }} style={styles.logo} /> : <View style={styles.logoPlaceholder} />}
+          {finalHomeLogo
+            ? <Image source={{ uri: finalHomeLogo }} style={styles.logo} />
+            : <View style={styles.logoPlaceholder} />}
           <Text style={styles.teamName} numberOfLines={2}>{home}</Text>
         </View>
+
         <View style={styles.center}>
           {isLive || isFinished ? (
-            <Text style={[styles.score, isLive && styles.scoreLive]}>{hscore ?? 0} - {ascore ?? 0}</Text>
+            <Text style={[styles.score, isLive && styles.scoreLive]}>
+              {hscore ?? 0} - {ascore ?? 0}
+            </Text>
           ) : (
             <>
               <Text style={styles.vs}>VS</Text>
               <Text style={styles.time}>{date}</Text>
             </>
           )}
+          {isLive && minute ? <Text style={styles.minute}>{minute}'</Text> : null}
         </View>
+
         <View style={styles.team}>
-          {finalAwayLogo ? <Image source={{ uri: finalAwayLogo }} style={styles.logo} /> : <View style={styles.logoPlaceholder} />}
+          {finalAwayLogo
+            ? <Image source={{ uri: finalAwayLogo }} style={styles.logo} />
+            : <View style={styles.logoPlaceholder} />}
           <Text style={styles.teamName} numberOfLines={2}>{away}</Text>
         </View>
       </View>
@@ -101,5 +120,6 @@ const styles = StyleSheet.create({
   scoreLive: { color: COLORS.gold },
   vs: { color: COLORS.textMuted, fontSize: 14, fontWeight: '800', letterSpacing: 2 },
   time: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '600' },
+  minute: { color: COLORS.live, fontSize: 12, fontWeight: '800' },
   goldBar: { height: 2, backgroundColor: COLORS.gold, borderRadius: 1, marginTop: 12, opacity: 0.6 },
 });
