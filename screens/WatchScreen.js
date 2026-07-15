@@ -11,28 +11,45 @@ import { COLORS } from '../theme';
 
 const FILTERS = ['All', 'Live', 'Upcoming', 'Finished'];
 
+function parseMatchDate(dateStr) {
+  if (!dateStr) return null;
+  // Handle formats: "2026-07-15", "2026/07/15", "2026-07-15 20:00", "2026/07/15 20:00"
+  const normalized = dateStr.toString().replace(/\//g, '-');
+  const d = new Date(normalized);
+  return isNaN(d) ? null : d;
+}
+
 function autoStatus(match) {
-  // If admin manually set live, keep it
   if (match.status === 'live') return 'live';
-
+  const matchDate = parseMatchDate(match.date);
+  if (!matchDate) return match.status || 'upcoming';
   const now = new Date();
-  const matchDate = new Date(match.date);
+  const diffMins = (now - matchDate) / 60000;
+  if (diffMins < 0) return 'upcoming';
+  if (diffMins < 105) return 'live';
+  return 'finished';
+}
 
-  if (isNaN(matchDate)) return match.status || 'upcoming';
+function formatMatchDate(dateStr) {
+  const d = parseMatchDate(dateStr);
+  if (!d) return dateStr || '';
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
 
-  const diffMs = now - matchDate;
-  const diffMins = diffMs / 60000;
+  const isToday = d.toDateString() === today.toDateString();
+  const isTomorrow = d.toDateString() === tomorrow.toDateString();
 
-  if (diffMins < 0) return 'upcoming';           // future
-  if (diffMins >= 0 && diffMins < 105) return 'live';  // 0-105 mins = live
-  return 'finished';                              // past 105 mins
+  const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const dateLabel = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+  return `${dateLabel} · ${timeStr}`;
 }
 
 function sortMatches(matches) {
   return [...matches].sort((a, b) => {
-    const dateA = new Date(a.date || 0);
-    const dateB = new Date(b.date || 0);
-    return dateA - dateB;
+    const dA = parseMatchDate(a.date) || new Date(0);
+    const dB = parseMatchDate(b.date) || new Date(0);
+    return dA - dB;
   });
 }
 
@@ -47,6 +64,7 @@ export default function WatchScreen({ navigation }) {
       const data = snapshot.docs.map((doc) => {
         const d = { id: doc.id, ...doc.data() };
         d.computedStatus = autoStatus(d);
+        d.formattedDate = formatMatchDate(d.date);
         return d;
       });
       setMatches(sortMatches(data));
@@ -56,11 +74,15 @@ export default function WatchScreen({ navigation }) {
     return unsubscribe;
   }, []);
 
-  // Re-compute status every minute
+  // Re-check status every minute
   useEffect(() => {
     const interval = setInterval(() => {
       setMatches((prev) =>
-        sortMatches(prev.map((m) => ({ ...m, computedStatus: autoStatus(m) })))
+        sortMatches(prev.map((m) => ({
+          ...m,
+          computedStatus: autoStatus(m),
+          formattedDate: formatMatchDate(m.date),
+        })))
       );
     }, 60000);
     return () => clearInterval(interval);
@@ -72,8 +94,7 @@ export default function WatchScreen({ navigation }) {
     if (filter === 'All') return true;
     if (filter === 'Live') return m.computedStatus === 'live';
     if (filter === 'Upcoming') return m.computedStatus === 'upcoming';
-    if (filter === 'Finished') return m.computedStatus === 'finished';
-    return true;
+    return m.computedStatus === 'finished';
   });
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.gold} /></View>;
@@ -86,7 +107,6 @@ export default function WatchScreen({ navigation }) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => setRefreshing(true)} tintColor={COLORS.gold} />}
         ListHeaderComponent={
           <View>
-            {/* Hero */}
             <View style={styles.hero}>
               <Text style={styles.heroEyebrow}>LIVE FOOTBALL STREAMING</Text>
               <Text style={styles.heroTitle}>WATCH{'\n'}<Text style={styles.heroGold}>LIVE</Text>{'\n'}FOOTBALL</Text>
@@ -96,16 +116,18 @@ export default function WatchScreen({ navigation }) {
               </View>
             </View>
 
-            {/* Section header */}
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Matches</Text>
               <Text style={styles.matchCount}>{filtered.length} matches</Text>
             </View>
 
-            {/* Filters */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContent}>
               {FILTERS.map((f) => (
-                <TouchableOpacity key={f} style={[styles.filterChip, filter === f && styles.filterChipActive]} onPress={() => setFilter(f)}>
+                <TouchableOpacity
+                  key={f}
+                  style={[styles.filterChip, filter === f && styles.filterChipActive]}
+                  onPress={() => setFilter(f)}
+                >
                   {f === 'Live' && <View style={styles.filterLiveDot} />}
                   <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{f}</Text>
                 </TouchableOpacity>
@@ -114,19 +136,37 @@ export default function WatchScreen({ navigation }) {
           </View>
         }
         renderItem={({ item }) => (
-          <View>
+          <View style={styles.matchBlock}>
+            {/* Date/time header per match */}
+            <View style={styles.matchDateRow}>
+              {item.comp ? <Text style={styles.matchComp}>{item.comp.toUpperCase()}</Text> : null}
+              <Text style={styles.matchDate}>{item.formattedDate}</Text>
+              {item.computedStatus === 'live' && (
+                <View style={styles.liveTag}>
+                  <Text style={styles.liveTagText}>LIVE</Text>
+                </View>
+              )}
+            </View>
+
             <MatchCard
               match={{ ...item, status: item.computedStatus }}
               onPress={() => item.stream && navigation.navigate('StreamPlayer', { match: item })}
             />
+
             {item.stream && (
               <TouchableOpacity
-                style={[styles.watchBtn, item.computedStatus === 'live' ? styles.watchBtnLive : item.computedStatus === 'finished' ? styles.watchBtnReplay : styles.watchBtnUpcoming]}
+                style={[
+                  styles.watchBtn,
+                  item.computedStatus === 'live' ? styles.watchBtnLive :
+                  item.computedStatus === 'finished' ? styles.watchBtnReplay :
+                  styles.watchBtnUpcoming
+                ]}
                 onPress={() => navigation.navigate('StreamPlayer', { match: item })}
               >
                 <Ionicons name="play" size={14} color="#fff" />
                 <Text style={styles.watchBtnText}>
-                  {item.computedStatus === 'live' ? '▶ WATCH LIVE' : item.computedStatus === 'finished' ? '▶ WATCH REPLAY' : '▶ SET REMINDER'}
+                  {item.computedStatus === 'live' ? 'WATCH LIVE' :
+                   item.computedStatus === 'finished' ? 'WATCH REPLAY' : 'WATCH STREAM'}
                 </Text>
               </TouchableOpacity>
             )}
@@ -164,6 +204,12 @@ const styles = StyleSheet.create({
   filterLiveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.live },
   filterText: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '700' },
   filterTextActive: { color: '#000' },
+  matchBlock: { marginBottom: 4 },
+  matchDateRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, gap: 8 },
+  matchComp: { color: COLORS.gold, fontSize: 10, fontWeight: '800', letterSpacing: 1, flex: 1 },
+  matchDate: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '600' },
+  liveTag: { backgroundColor: COLORS.live, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+  liveTagText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
   watchBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginHorizontal: 12, marginTop: -4, marginBottom: 10, paddingVertical: 12, borderRadius: 10, gap: 8 },
   watchBtnLive: { backgroundColor: COLORS.live },
   watchBtnReplay: { backgroundColor: '#1D4ED8' },
