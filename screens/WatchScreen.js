@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, ScrollView, FlatList, StyleSheet, Text, ActivityIndicator,
-  RefreshControl, TouchableOpacity,
+  View, FlatList, StyleSheet, Text, ActivityIndicator,
+  RefreshControl, TouchableOpacity, ScrollView,
 } from 'react-native';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,15 +10,30 @@ import MatchCard from '../components/MatchCard';
 import { COLORS } from '../theme';
 
 const FILTERS = ['All', 'Live', 'Upcoming', 'Finished'];
-const DATE_FILTERS = ['All', 'Today', 'Tomorrow'];
 
-function getToday() {
-  return new Date().toISOString().slice(0, 10);
+function autoStatus(match) {
+  // If admin manually set live, keep it
+  if (match.status === 'live') return 'live';
+
+  const now = new Date();
+  const matchDate = new Date(match.date);
+
+  if (isNaN(matchDate)) return match.status || 'upcoming';
+
+  const diffMs = now - matchDate;
+  const diffMins = diffMs / 60000;
+
+  if (diffMins < 0) return 'upcoming';           // future
+  if (diffMins >= 0 && diffMins < 105) return 'live';  // 0-105 mins = live
+  return 'finished';                              // past 105 mins
 }
-function getTomorrow() {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+
+function sortMatches(matches) {
+  return [...matches].sort((a, b) => {
+    const dateA = new Date(a.date || 0);
+    const dateB = new Date(b.date || 0);
+    return dateA - dateB;
+  });
 }
 
 export default function WatchScreen({ navigation }) {
@@ -26,40 +41,39 @@ export default function WatchScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('All');
-  const [dateFilter, setDateFilter] = useState('All');
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'matches'), (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setMatches(data);
-      setLoading(false);
-      setRefreshing(false);
-    }, (error) => {
-      console.error(error);
+      const data = snapshot.docs.map((doc) => {
+        const d = { id: doc.id, ...doc.data() };
+        d.computedStatus = autoStatus(d);
+        return d;
+      });
+      setMatches(sortMatches(data));
       setLoading(false);
       setRefreshing(false);
     });
     return unsubscribe;
   }, []);
 
-  const liveCount = matches.filter((m) => m.status === 'live').length;
+  // Re-compute status every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMatches((prev) =>
+        sortMatches(prev.map((m) => ({ ...m, computedStatus: autoStatus(m) })))
+      );
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const liveCount = matches.filter((m) => m.computedStatus === 'live').length;
 
   const filtered = matches.filter((m) => {
-    const statusMatch =
-      filter === 'All' ? true :
-      filter === 'Live' ? m.status === 'live' :
-      filter === 'Upcoming' ? m.status === 'upcoming' :
-      m.status === 'finished';
-
-    const today = getToday();
-    const tomorrow = getTomorrow();
-    const matchDate = (m.date || '').slice(0, 10);
-    const dateMatch =
-      dateFilter === 'All' ? true :
-      dateFilter === 'Today' ? matchDate === today :
-      matchDate === tomorrow;
-
-    return statusMatch && dateMatch;
+    if (filter === 'All') return true;
+    if (filter === 'Live') return m.computedStatus === 'live';
+    if (filter === 'Upcoming') return m.computedStatus === 'upcoming';
+    if (filter === 'Finished') return m.computedStatus === 'finished';
+    return true;
   });
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.gold} /></View>;
@@ -82,27 +96,18 @@ export default function WatchScreen({ navigation }) {
               </View>
             </View>
 
-            {/* Matches header */}
+            {/* Section header */}
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Matches</Text>
               <Text style={styles.matchCount}>{filtered.length} matches</Text>
             </View>
 
-            {/* Status filters */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
+            {/* Filters */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContent}>
               {FILTERS.map((f) => (
                 <TouchableOpacity key={f} style={[styles.filterChip, filter === f && styles.filterChipActive]} onPress={() => setFilter(f)}>
                   {f === 'Live' && <View style={styles.filterLiveDot} />}
                   <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{f}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {/* Date filters */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
-              {DATE_FILTERS.map((f) => (
-                <TouchableOpacity key={f} style={[styles.dateChip, dateFilter === f && styles.dateChipActive]} onPress={() => setDateFilter(f)}>
-                  <Text style={[styles.dateText, dateFilter === f && styles.dateTextActive]}>{f === 'Today' ? '📅 Today' : f === 'Tomorrow' ? '📅 Tomorrow' : f}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -111,20 +116,20 @@ export default function WatchScreen({ navigation }) {
         renderItem={({ item }) => (
           <View>
             <MatchCard
-              match={item}
+              match={{ ...item, status: item.computedStatus }}
               onPress={() => item.stream && navigation.navigate('StreamPlayer', { match: item })}
             />
-            {item.stream ? (
+            {item.stream && (
               <TouchableOpacity
-                style={[styles.watchBtn, item.status === 'live' ? styles.watchBtnLive : styles.watchBtnReplay]}
+                style={[styles.watchBtn, item.computedStatus === 'live' ? styles.watchBtnLive : item.computedStatus === 'finished' ? styles.watchBtnReplay : styles.watchBtnUpcoming]}
                 onPress={() => navigation.navigate('StreamPlayer', { match: item })}
               >
                 <Ionicons name="play" size={14} color="#fff" />
                 <Text style={styles.watchBtnText}>
-                  {item.status === 'live' ? '▶ WATCH NOW' : '▶ WATCH REPLAY'}
+                  {item.computedStatus === 'live' ? '▶ WATCH LIVE' : item.computedStatus === 'finished' ? '▶ WATCH REPLAY' : '▶ SET REMINDER'}
                 </Text>
               </TouchableOpacity>
-            ) : null}
+            )}
           </View>
         )}
         ListEmptyComponent={
@@ -150,23 +155,19 @@ const styles = StyleSheet.create({
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.textMuted },
   liveDotActive: { backgroundColor: COLORS.live },
   liveCountText: { color: COLORS.textPrimary, fontSize: 13, fontWeight: '700' },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 20, paddingBottom: 10 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 20, paddingBottom: 6 },
   sectionTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800' },
   matchCount: { color: COLORS.textMuted, fontSize: 13 },
-  filterScroll: { marginBottom: 4 },
-  filterContent: { paddingHorizontal: 12, paddingVertical: 6, gap: 8 },
+  filterContent: { paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
   filterChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, backgroundColor: COLORS.bgCard, borderWidth: 1, borderColor: COLORS.border, gap: 5 },
   filterChipActive: { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
   filterLiveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.live },
   filterText: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '700' },
   filterTextActive: { color: '#000' },
-  dateChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: COLORS.bgCard, borderWidth: 1, borderColor: COLORS.border },
-  dateChipActive: { backgroundColor: COLORS.bgCardAlt, borderColor: COLORS.gold },
-  dateText: { color: COLORS.textMuted, fontSize: 12, fontWeight: '600' },
-  dateTextActive: { color: COLORS.gold },
   watchBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginHorizontal: 12, marginTop: -4, marginBottom: 10, paddingVertical: 12, borderRadius: 10, gap: 8 },
   watchBtnLive: { backgroundColor: COLORS.live },
   watchBtnReplay: { backgroundColor: '#1D4ED8' },
+  watchBtnUpcoming: { backgroundColor: COLORS.bgCardAlt, borderWidth: 1, borderColor: COLORS.border },
   watchBtnText: { color: '#fff', fontWeight: '800', fontSize: 13, letterSpacing: 0.5 },
   empty: { alignItems: 'center', paddingTop: 60 },
   emptyIcon: { fontSize: 48, marginBottom: 16 },
