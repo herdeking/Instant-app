@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { COLORS } from '../theme';
 
 function useTeamLogo(teamName) {
   const [logo, setLogo] = useState(null);
@@ -18,49 +19,87 @@ function useTeamLogo(teamName) {
   return logo;
 }
 
+function LivePulse() {
+  const pulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.4, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+  return (
+    <View style={styles.liveContainer}>
+      <Animated.View style={[styles.liveDot, { transform: [{ scale: pulse }] }]} />
+      <Text style={styles.liveText}>LIVE</Text>
+    </View>
+  );
+}
+
 export default function MatchCard({ match, onPress }) {
   const { home, away, homeLogo, awayLogo, date, status, hscore, ascore, comp } = match;
   const fetchedHomeLogo = useTeamLogo(!homeLogo ? home : null);
   const fetchedAwayLogo = useTeamLogo(!awayLogo ? away : null);
   const finalHomeLogo = homeLogo || fetchedHomeLogo;
   const finalAwayLogo = awayLogo || fetchedAwayLogo;
+  const isLive = status === 'live';
+  const isFinished = status === 'finished';
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
-      {comp ? <Text style={styles.competition}>{comp}</Text> : null}
+    <TouchableOpacity style={[styles.card, isLive && styles.cardLive]} onPress={onPress} activeOpacity={0.8}>
+      {comp ? (
+        <View style={styles.compRow}>
+          <View style={styles.compDot} />
+          <Text style={styles.competition}>{comp.toUpperCase()}</Text>
+          {isLive && <LivePulse />}
+        </View>
+      ) : isLive ? (
+        <View style={styles.compRow}><LivePulse /></View>
+      ) : null}
       <View style={styles.row}>
         <View style={styles.team}>
           {finalHomeLogo ? <Image source={{ uri: finalHomeLogo }} style={styles.logo} /> : <View style={styles.logoPlaceholder} />}
-          <Text style={styles.teamName} numberOfLines={1}>{home}</Text>
+          <Text style={styles.teamName} numberOfLines={2}>{home}</Text>
         </View>
         <View style={styles.center}>
-          {status === 'live' && <View style={styles.liveBadge}><Text style={styles.liveText}>LIVE</Text></View>}
-          {status === 'finished' || status === 'live' ? (
-            <Text style={styles.score}>{hscore ?? 0} - {ascore ?? 0}</Text>
+          {isLive || isFinished ? (
+            <Text style={[styles.score, isLive && styles.scoreLive]}>{hscore ?? 0} - {ascore ?? 0}</Text>
           ) : (
-            <Text style={styles.time}>{date}</Text>
+            <>
+              <Text style={styles.vs}>VS</Text>
+              <Text style={styles.time}>{date}</Text>
+            </>
           )}
         </View>
         <View style={styles.team}>
           {finalAwayLogo ? <Image source={{ uri: finalAwayLogo }} style={styles.logo} /> : <View style={styles.logoPlaceholder} />}
-          <Text style={styles.teamName} numberOfLines={1}>{away}</Text>
+          <Text style={styles.teamName} numberOfLines={2}>{away}</Text>
         </View>
       </View>
+      {isLive && <View style={styles.goldBar} />}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: '#111827', borderRadius: 12, padding: 14, marginVertical: 6, marginHorizontal: 12 },
-  competition: { color: '#9CA3AF', fontSize: 12, marginBottom: 8, textTransform: 'uppercase' },
+  card: { backgroundColor: COLORS.bgCard, borderRadius: 14, padding: 16, marginVertical: 6, marginHorizontal: 12, borderWidth: 1, borderColor: COLORS.border },
+  cardLive: { borderColor: COLORS.gold },
+  compRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 6 },
+  compDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: COLORS.gold },
+  competition: { color: COLORS.gold, fontSize: 10, fontWeight: '700', letterSpacing: 1.5, flex: 1 },
+  liveContainer: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.live },
+  liveText: { color: COLORS.live, fontSize: 11, fontWeight: '800', letterSpacing: 1 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  team: { flex: 1, alignItems: 'center' },
-  logo: { width: 32, height: 32, marginBottom: 4, resizeMode: 'contain' },
-  logoPlaceholder: { width: 32, height: 32, marginBottom: 4, borderRadius: 16, backgroundColor: '#374151' },
-  teamName: { color: '#F9FAFB', fontSize: 13, fontWeight: '600', textAlign: 'center' },
-  center: { flex: 0.8, alignItems: 'center' },
-  score: { color: '#FFFFFF', fontSize: 20, fontWeight: '800' },
-  time: { color: '#9CA3AF', fontSize: 14, fontWeight: '600' },
-  liveBadge: { backgroundColor: '#DC2626', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginBottom: 4 },
-  liveText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  team: { flex: 1, alignItems: 'center', gap: 8 },
+  logo: { width: 40, height: 40, resizeMode: 'contain' },
+  logoPlaceholder: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.bgCardAlt, borderWidth: 1, borderColor: COLORS.border },
+  teamName: { color: COLORS.textPrimary, fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  center: { flex: 0.9, alignItems: 'center', gap: 4 },
+  score: { color: COLORS.textPrimary, fontSize: 28, fontWeight: '800', letterSpacing: 1 },
+  scoreLive: { color: COLORS.gold },
+  vs: { color: COLORS.textMuted, fontSize: 14, fontWeight: '800', letterSpacing: 2 },
+  time: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '600' },
+  goldBar: { height: 2, backgroundColor: COLORS.gold, borderRadius: 1, marginTop: 12, opacity: 0.6 },
 });

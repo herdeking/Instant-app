@@ -1,58 +1,35 @@
-// components/NewsCard.js
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { COLORS } from '../theme';
 
-// Expects { id, title, summary, imageUrl, source, publishedAt }
 export default function NewsCard({ article, onPress }) {
   const { title, summary, imageUrl, source, publishedAt } = article;
-
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
-      {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.image} /> : null}
+      {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.image} /> : <View style={styles.imagePlaceholder}><Text style={styles.placeholderText}>⚽</Text></View>}
       <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={2}>{title}</Text>
-        {summary ? <Text style={styles.summary} numberOfLines={2}>{summary}</Text> : null}
         <View style={styles.metaRow}>
-          {source ? <Text style={styles.meta}>{source}</Text> : null}
-          {publishedAt ? <Text style={styles.meta}>{publishedAt}</Text> : null}
+          {source ? <Text style={styles.source}>{source.toUpperCase()}</Text> : null}
+          {publishedAt ? <Text style={styles.date}>{publishedAt}</Text> : null}
         </View>
+        <Text style={styles.title} numberOfLines={3}>{title}</Text>
+        {summary ? <Text style={styles.summary} numberOfLines={2}>{summary}</Text> : null}
+        <Text style={styles.readMore}>Read more →</Text>
       </View>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#111827',
-    borderRadius: 12,
-    marginVertical: 6,
-    marginHorizontal: 12,
-    overflow: 'hidden',
-  },
-  image: {
-    width: '100%',
-    height: 160,
-  },
-  content: {
-    padding: 12,
-  },
-  title: {
-    color: '#F9FAFB',
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  summary: {
-    color: '#9CA3AF',
-    fontSize: 13,
-    marginBottom: 8,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  meta: {
-    color: '#6B7280',
-    fontSize: 11,
-  },
+  card: { backgroundColor: COLORS.bgCard, borderRadius: 14, marginVertical: 6, marginHorizontal: 12, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
+  image: { width: '100%', height: 180 },
+  imagePlaceholder: { width: '100%', height: 100, backgroundColor: COLORS.bgCardAlt, justifyContent: 'center', alignItems: 'center' },
+  placeholderText: { fontSize: 36 },
+  content: { padding: 14 },
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  source: { color: COLORS.gold, fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
+  date: { color: COLORS.textMuted, fontSize: 11 },
+  title: { color: COLORS.textPrimary, fontSize: 15, fontWeight: '700', lineHeight: 22, marginBottom: 6 },
+  summary: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 19, marginBottom: 10 },
+  readMore: { color: COLORS.gold, fontSize: 12, fontWeight: '700' },
 });
