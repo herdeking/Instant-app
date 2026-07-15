@@ -12,16 +12,20 @@ import { COLORS } from '../theme';
 const Tab = createBottomTabNavigator();
 const ICONS = { Livestream: 'play-circle', Matches: 'football', News: 'newspaper', Table: 'podium' };
 
-function AdminEntryButton({ navigation }) {
-  return (
-    <TouchableOpacity onPress={() => navigation.navigate('Admin')} style={styles.adminBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-      <Ionicons name="settings-outline" size={20} color={COLORS.textMuted} />
-    </TouchableOpacity>
-  );
-}
-
 export default function BottomTabs({ navigation: rootNavigation }) {
   const insets = useSafeAreaInsets();
+
+  function AdminBtn() {
+    return (
+      <TouchableOpacity
+        onPress={() => rootNavigation.navigate('Admin')}
+        style={styles.adminBtn}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons name="settings-outline" size={20} color={COLORS.textMuted} />
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <Tab.Navigator
@@ -45,16 +49,10 @@ export default function BottomTabs({ navigation: rootNavigation }) {
         ),
       })}
     >
-      <Tab.Screen name="Livestream" component={WatchScreen} options={{ title: 'Livestream' }} />
+      <Tab.Screen name="Livestream" component={WatchScreen} options={{ title: 'Livestream', headerShown: false }} />
       <Tab.Screen name="Matches" component={MatchesScreen} />
       <Tab.Screen name="News" component={NewsScreen} />
-      <Tab.Screen
-        name="Table"
-        component={TableScreen}
-        options={{
-          headerRight: () => <AdminEntryButton navigation={rootNavigation} />,
-        }}
-      />
+      <Tab.Screen name="Table" component={TableScreen} options={{ headerRight: () => <AdminBtn /> }} />
     </Tab.Navigator>
   );
 }
