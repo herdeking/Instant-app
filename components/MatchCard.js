@@ -1,15 +1,36 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+
+function useTeamLogo(teamName) {
+  const [logo, setLogo] = useState(null);
+  useEffect(() => {
+    if (!teamName) return;
+    fetch(`https://v3.football.api-sports.io/teams?search=${encodeURIComponent(teamName)}`, {
+      headers: { 'x-apisports-key': '14fc22d6286abe7f65bd37725b8fb926' },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        const team = data?.response?.[0]?.team;
+        if (team?.logo) setLogo(team.logo);
+      })
+      .catch(() => {});
+  }, [teamName]);
+  return logo;
+}
 
 export default function MatchCard({ match, onPress }) {
   const { home, away, homeLogo, awayLogo, date, status, hscore, ascore, comp } = match;
+  const fetchedHomeLogo = useTeamLogo(!homeLogo ? home : null);
+  const fetchedAwayLogo = useTeamLogo(!awayLogo ? away : null);
+  const finalHomeLogo = homeLogo || fetchedHomeLogo;
+  const finalAwayLogo = awayLogo || fetchedAwayLogo;
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
       {comp ? <Text style={styles.competition}>{comp}</Text> : null}
       <View style={styles.row}>
         <View style={styles.team}>
-          {homeLogo ? <Image source={{ uri: homeLogo }} style={styles.logo} /> : <View style={styles.logoPlaceholder} />}
+          {finalHomeLogo ? <Image source={{ uri: finalHomeLogo }} style={styles.logo} /> : <View style={styles.logoPlaceholder} />}
           <Text style={styles.teamName} numberOfLines={1}>{home}</Text>
         </View>
         <View style={styles.center}>
@@ -21,7 +42,7 @@ export default function MatchCard({ match, onPress }) {
           )}
         </View>
         <View style={styles.team}>
-          {awayLogo ? <Image source={{ uri: awayLogo }} style={styles.logo} /> : <View style={styles.logoPlaceholder} />}
+          {finalAwayLogo ? <Image source={{ uri: finalAwayLogo }} style={styles.logo} /> : <View style={styles.logoPlaceholder} />}
           <Text style={styles.teamName} numberOfLines={1}>{away}</Text>
         </View>
       </View>
