@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { db } from '../firebaseConfig';
 import MatchCard from '../components/MatchCard';
 import AdBanner from '../components/AdBanner';
-import AdBanner from '../components/AdBanner';
 import { COLORS } from '../theme';
 
 const FILTERS = ['All', 'Live', 'Upcoming', 'Finished'];
