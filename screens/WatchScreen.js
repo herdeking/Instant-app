@@ -10,20 +10,10 @@ const FILTERS = ['Upcoming', 'Live', 'Finished', 'All'];
 
 function parseMatchDate(dateStr) {
   if (!dateStr) return null;
-  const normalized = dateStr.toString().replace(/\//g, '-');
-  const d = new Date(normalized);
+  // Remove timezone labels like WAT, GMT, UTC, etc.
+  const cleaned = dateStr.toString().replace(/[A-Z]{2,4}$/, '').replace(/\//g, '-').trim();
+  const d = new Date(cleaned);
   return isNaN(d) ? null : d;
-}
-
-function autoStatus(match) {
-  if (match.status === 'live') return 'live';
-  const matchDate = parseMatchDate(match.date);
-  if (!matchDate) return match.status || 'upcoming';
-  const now = new Date();
-  const diffMins = (now - matchDate) / 60000;
-  if (diffMins < 0) return 'upcoming';
-  if (diffMins < 105) return 'live';
-  return 'finished';
 }
 
 function formatMatchDate(dateStr) {
@@ -40,15 +30,18 @@ function formatMatchDate(dateStr) {
 }
 
 function sortMatches(matches) {
-  const order = { live: 0, upcoming: 1, finished: 2 };
+  const order = { live: 0, upcoming: 1, finished: 2, draft: 3 };
   return [...matches].sort((a, b) => {
-    const statusDiff = (order[a.computedStatus] ?? 1) - (order[b.computedStatus] ?? 1);
+    const statusDiff = (order[a.status] ?? 1) - (order[b.status] ?? 1);
     if (statusDiff !== 0) return statusDiff;
     const dA = parseMatchDate(a.date) || new Date(0);
     const dB = parseMatchDate(b.date) || new Date(0);
-    // upcoming: soonest first; finished: most recent first
-    return a.computedStatus === 'finished' ? dB - dA : dA - dB;
+    return a.status === 'finished' ? dB - dA : dA - dB;
   });
+}
+
+function getStreamLink(match) {
+  return match.stream || match.stream2 || match.stream3 || null;
 }
 
 export default function WatchScreen({ navigation }) {
@@ -59,12 +52,13 @@ export default function WatchScreen({ navigation }) {
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'matches'), (snapshot) => {
-      const data = snapshot.docs.map((doc) => {
-        const d = { id: doc.id, ...doc.data() };
-        d.computedStatus = autoStatus(d);
-        d.formattedDate = formatMatchDate(d.date);
-        return d;
-      });
+      const data = snapshot.docs
+        .map((doc) => {
+          const d = { id: doc.id, ...doc.data() };
+          d.formattedDate = formatMatchDate(d.date);
+          return d;
+        })
+        .filter((m) => m.status !== 'draft'); // hide draft matches
       setMatches(sortMatches(data));
       setLoading(false);
       setRefreshing(false);
@@ -72,27 +66,14 @@ export default function WatchScreen({ navigation }) {
     return unsubscribe;
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMatches((prev) =>
-        sortMatches(prev.map((m) => ({
-          ...m,
-          computedStatus: autoStatus(m),
-          formattedDate: formatMatchDate(m.date),
-        })))
-      );
-    }, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const liveCount = matches.filter((m) => m.computedStatus === 'live').length;
-  const upcomingCount = matches.filter((m) => m.computedStatus === 'upcoming').length;
+  const liveCount = matches.filter((m) => m.status === 'live').length;
+  const upcomingCount = matches.filter((m) => m.status === 'upcoming').length;
 
   const filtered = matches.filter((m) => {
     if (filter === 'All') return true;
-    if (filter === 'Live') return m.computedStatus === 'live';
-    if (filter === 'Upcoming') return m.computedStatus === 'upcoming';
-    return m.computedStatus === 'finished';
+    if (filter === 'Live') return m.status === 'live';
+    if (filter === 'Upcoming') return m.status === 'upcoming';
+    return m.status === 'finished';
   });
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.gold} /></View>;
@@ -136,32 +117,43 @@ export default function WatchScreen({ navigation }) {
             </ScrollView>
           </View>
         }
-        renderItem={({ item }) => (
-          <View style={styles.matchBlock}>
-            <View style={styles.matchDateRow}>
-              <Text style={styles.matchComp}>{item.comp ? item.comp.toUpperCase() : ''}</Text>
-              <Text style={styles.matchDate}>{item.formattedDate}</Text>
-              {item.computedStatus === 'live' && (
-                <View style={styles.liveTag}><Text style={styles.liveTagText}>LIVE</Text></View>
+        renderItem={({ item }) => {
+          const streamLink = getStreamLink(item);
+          return (
+            <View style={styles.matchBlock}>
+              <View style={styles.matchDateRow}>
+                <Text style={styles.matchComp}>
+                  {[item.comp, item.round].filter(Boolean).join(' · ').toUpperCase()}
+                </Text>
+                <Text style={styles.matchDate}>{item.formattedDate}</Text>
+                {item.status === 'live' && (
+                  <View style={styles.liveTag}>
+                    <Text style={styles.liveTagText}>{item.minute ? `LIVE ${item.minute}'` : 'LIVE'}</Text>
+                  </View>
+                )}
+              </View>
+              <MatchCard
+                match={item}
+                onPress={() => streamLink && navigation.navigate('StreamPlayer', { match: item })}
+              />
+              {streamLink && (
+                <TouchableOpacity
+                  style={[styles.watchBtn,
+                    item.status === 'live' ? styles.watchBtnLive :
+                    item.status === 'finished' ? styles.watchBtnReplay :
+                    styles.watchBtnUpcoming
+                  ]}
+                  onPress={() => navigation.navigate('StreamPlayer', { match: item })}
+                >
+                  <Ionicons name="play" size={14} color="#fff" />
+                  <Text style={styles.watchBtnText}>
+                    {item.status === 'live' ? 'WATCH LIVE' : item.status === 'finished' ? 'WATCH REPLAY' : 'WATCH STREAM'}
+                  </Text>
+                </TouchableOpacity>
               )}
             </View>
-            <MatchCard
-              match={{ ...item, status: item.computedStatus }}
-              onPress={() => item.stream && navigation.navigate('StreamPlayer', { match: item })}
-            />
-            {item.stream && (
-              <TouchableOpacity
-                style={[styles.watchBtn, item.computedStatus === 'live' ? styles.watchBtnLive : item.computedStatus === 'finished' ? styles.watchBtnReplay : styles.watchBtnUpcoming]}
-                onPress={() => navigation.navigate('StreamPlayer', { match: item })}
-              >
-                <Ionicons name="play" size={14} color="#fff" />
-                <Text style={styles.watchBtnText}>
-                  {item.computedStatus === 'live' ? 'WATCH LIVE' : item.computedStatus === 'finished' ? 'WATCH REPLAY' : 'WATCH STREAM'}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+          );
+        }}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>⚽</Text>
