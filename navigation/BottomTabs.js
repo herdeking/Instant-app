@@ -1,7 +1,8 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
+import { TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import WatchScreen from '../screens/WatchScreen';
 import MatchesScreen from '../screens/MatchesScreen';
 import NewsScreen from '../screens/NewsScreen';
@@ -20,13 +21,23 @@ function AdminEntryButton({ navigation }) {
 }
 
 export default function BottomTabs({ navigation: rootNavigation }) {
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = 60 + insets.bottom;
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerStyle: { backgroundColor: COLORS.bg, borderBottomWidth: 0, elevation: 0, shadowOpacity: 0 },
         headerTintColor: COLORS.textPrimary,
         headerTitleStyle: { fontWeight: '800', fontSize: 20, letterSpacing: 0.5 },
-        tabBarStyle: { backgroundColor: COLORS.bgTab, borderTopColor: COLORS.border, borderTopWidth: 1, height: 60, paddingBottom: 8 },
+        tabBarStyle: {
+          backgroundColor: COLORS.bgTab,
+          borderTopColor: COLORS.border,
+          borderTopWidth: 1,
+          height: tabBarHeight,
+          paddingBottom: insets.bottom + 4,
+          paddingTop: 8,
+        },
         tabBarActiveTintColor: COLORS.gold,
         tabBarInactiveTintColor: COLORS.textMuted,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
