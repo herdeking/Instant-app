@@ -1,19 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View, FlatList, StyleSheet, Text, ActivityIndicator,
-  RefreshControl, TouchableOpacity, ScrollView,
-} from 'react-native';
+import { View, FlatList, StyleSheet, Text, ActivityIndicator, RefreshControl, TouchableOpacity, ScrollView } from 'react-native';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { db } from '../firebaseConfig';
 import MatchCard from '../components/MatchCard';
 import { COLORS } from '../theme';
 
-const FILTERS = ['All', 'Live', 'Upcoming', 'Finished'];
+const FILTERS = ['Upcoming', 'Live', 'Finished', 'All'];
 
 function parseMatchDate(dateStr) {
   if (!dateStr) return null;
-  // Handle formats: "2026-07-15", "2026/07/15", "2026-07-15 20:00", "2026/07/15 20:00"
   const normalized = dateStr.toString().replace(/\//g, '-');
   const d = new Date(normalized);
   return isNaN(d) ? null : d;
@@ -36,20 +32,22 @@ function formatMatchDate(dateStr) {
   const today = new Date();
   const tomorrow = new Date();
   tomorrow.setDate(today.getDate() + 1);
-
   const isToday = d.toDateString() === today.toDateString();
   const isTomorrow = d.toDateString() === tomorrow.toDateString();
-
   const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const dateLabel = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : d.toLocaleDateString([], { day: 'numeric', month: 'short' });
   return `${dateLabel} · ${timeStr}`;
 }
 
 function sortMatches(matches) {
+  const order = { live: 0, upcoming: 1, finished: 2 };
   return [...matches].sort((a, b) => {
+    const statusDiff = (order[a.computedStatus] ?? 1) - (order[b.computedStatus] ?? 1);
+    if (statusDiff !== 0) return statusDiff;
     const dA = parseMatchDate(a.date) || new Date(0);
     const dB = parseMatchDate(b.date) || new Date(0);
-    return dA - dB;
+    // upcoming: soonest first; finished: most recent first
+    return a.computedStatus === 'finished' ? dB - dA : dA - dB;
   });
 }
 
@@ -57,7 +55,7 @@ export default function WatchScreen({ navigation }) {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState('All');
+  const [filter, setFilter] = useState('Upcoming');
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'matches'), (snapshot) => {
@@ -74,7 +72,6 @@ export default function WatchScreen({ navigation }) {
     return unsubscribe;
   }, []);
 
-  // Re-check status every minute
   useEffect(() => {
     const interval = setInterval(() => {
       setMatches((prev) =>
@@ -89,6 +86,7 @@ export default function WatchScreen({ navigation }) {
   }, []);
 
   const liveCount = matches.filter((m) => m.computedStatus === 'live').length;
+  const upcomingCount = matches.filter((m) => m.computedStatus === 'upcoming').length;
 
   const filtered = matches.filter((m) => {
     if (filter === 'All') return true;
@@ -110,9 +108,16 @@ export default function WatchScreen({ navigation }) {
             <View style={styles.hero}>
               <Text style={styles.heroEyebrow}>LIVE FOOTBALL STREAMING</Text>
               <Text style={styles.heroTitle}>WATCH{'\n'}<Text style={styles.heroGold}>LIVE</Text>{'\n'}FOOTBALL</Text>
-              <View style={styles.liveCountBadge}>
-                <View style={[styles.liveDot, liveCount > 0 && styles.liveDotActive]} />
-                <Text style={styles.liveCountText}>{liveCount} Live</Text>
+              <View style={styles.badgeRow}>
+                <View style={styles.liveCountBadge}>
+                  <View style={[styles.liveDot, liveCount > 0 && styles.liveDotActive]} />
+                  <Text style={styles.liveCountText}>{liveCount} Live</Text>
+                </View>
+                {upcomingCount > 0 && (
+                  <View style={styles.upcomingBadge}>
+                    <Text style={styles.upcomingText}>{upcomingCount} Upcoming</Text>
+                  </View>
+                )}
               </View>
             </View>
 
@@ -123,11 +128,7 @@ export default function WatchScreen({ navigation }) {
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContent}>
               {FILTERS.map((f) => (
-                <TouchableOpacity
-                  key={f}
-                  style={[styles.filterChip, filter === f && styles.filterChipActive]}
-                  onPress={() => setFilter(f)}
-                >
+                <TouchableOpacity key={f} style={[styles.filterChip, filter === f && styles.filterChipActive]} onPress={() => setFilter(f)}>
                   {f === 'Live' && <View style={styles.filterLiveDot} />}
                   <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{f}</Text>
                 </TouchableOpacity>
@@ -137,36 +138,25 @@ export default function WatchScreen({ navigation }) {
         }
         renderItem={({ item }) => (
           <View style={styles.matchBlock}>
-            {/* Date/time header per match */}
             <View style={styles.matchDateRow}>
-              {item.comp ? <Text style={styles.matchComp}>{item.comp.toUpperCase()}</Text> : null}
+              <Text style={styles.matchComp}>{item.comp ? item.comp.toUpperCase() : ''}</Text>
               <Text style={styles.matchDate}>{item.formattedDate}</Text>
               {item.computedStatus === 'live' && (
-                <View style={styles.liveTag}>
-                  <Text style={styles.liveTagText}>LIVE</Text>
-                </View>
+                <View style={styles.liveTag}><Text style={styles.liveTagText}>LIVE</Text></View>
               )}
             </View>
-
             <MatchCard
               match={{ ...item, status: item.computedStatus }}
               onPress={() => item.stream && navigation.navigate('StreamPlayer', { match: item })}
             />
-
             {item.stream && (
               <TouchableOpacity
-                style={[
-                  styles.watchBtn,
-                  item.computedStatus === 'live' ? styles.watchBtnLive :
-                  item.computedStatus === 'finished' ? styles.watchBtnReplay :
-                  styles.watchBtnUpcoming
-                ]}
+                style={[styles.watchBtn, item.computedStatus === 'live' ? styles.watchBtnLive : item.computedStatus === 'finished' ? styles.watchBtnReplay : styles.watchBtnUpcoming]}
                 onPress={() => navigation.navigate('StreamPlayer', { match: item })}
               >
                 <Ionicons name="play" size={14} color="#fff" />
                 <Text style={styles.watchBtnText}>
-                  {item.computedStatus === 'live' ? 'WATCH LIVE' :
-                   item.computedStatus === 'finished' ? 'WATCH REPLAY' : 'WATCH STREAM'}
+                  {item.computedStatus === 'live' ? 'WATCH LIVE' : item.computedStatus === 'finished' ? 'WATCH REPLAY' : 'WATCH STREAM'}
                 </Text>
               </TouchableOpacity>
             )}
@@ -175,8 +165,8 @@ export default function WatchScreen({ navigation }) {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>⚽</Text>
-            <Text style={styles.emptyText}>No matches found</Text>
-            <Text style={styles.emptySubtext}>Try a different filter</Text>
+            <Text style={styles.emptyText}>No {filter.toLowerCase()} matches</Text>
+            <Text style={styles.emptySubtext}>Check back later</Text>
           </View>
         }
       />
@@ -191,10 +181,13 @@ const styles = StyleSheet.create({
   heroEyebrow: { color: COLORS.gold, fontSize: 10, fontWeight: '700', letterSpacing: 2, marginBottom: 10 },
   heroTitle: { color: COLORS.textPrimary, fontSize: 40, fontWeight: '900', lineHeight: 44, letterSpacing: 1, marginBottom: 16 },
   heroGold: { color: COLORS.gold },
-  liveCountBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.bgCard, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 6, borderWidth: 1, borderColor: COLORS.border },
+  badgeRow: { flexDirection: 'row', gap: 10 },
+  liveCountBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.bgCard, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 6, borderWidth: 1, borderColor: COLORS.border },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.textMuted },
   liveDotActive: { backgroundColor: COLORS.live },
   liveCountText: { color: COLORS.textPrimary, fontSize: 13, fontWeight: '700' },
+  upcomingBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.bgCard, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: COLORS.border },
+  upcomingText: { color: COLORS.gold, fontSize: 13, fontWeight: '700' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 20, paddingBottom: 6 },
   sectionTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800' },
   matchCount: { color: COLORS.textMuted, fontSize: 13 },
