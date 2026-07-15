@@ -1,41 +1,41 @@
-// screens/NewsScreen.js
 import React, { useEffect, useState } from 'react';
-import { View, FlatList, StyleSheet, ActivityIndicator, Text, Linking } from 'react-native';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import { View, FlatList, StyleSheet, ActivityIndicator, Text, Linking, RefreshControl } from 'react-native';
 import NewsCard from '../components/NewsCard';
 
-// Assumes a "news" collection populated by your existing NewsAPI sync job
+const NEWS_API_KEY = 'adf1b30fb4cd4c2abbedbf1985a97929';
+
 export default function NewsScreen() {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    const q = query(collection(db, 'news'), orderBy('publishedAt', 'desc'));
+  const fetchNews = async () => {
+    try {
+      const res = await fetch(
+        `https://newsapi.org/v2/everything?q=football&language=en&pageSize=20&sortBy=publishedAt&apiKey=${NEWS_API_KEY}`
+      );
+      const data = await res.json();
+      const mapped = (data.articles || []).map((a, i) => ({
+        id: String(i),
+        title: a.title,
+        summary: a.description,
+        imageUrl: a.urlToImage,
+        source: a.source?.name,
+        publishedAt: a.publishedAt?.slice(0, 10),
+        url: a.url,
+      }));
+      setArticles(mapped);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setArticles(data);
-        setLoading(false);
-      },
-      (error) => {
-        console.error('Error fetching news:', error);
-        setLoading(false);
-      }
-    );
+  useEffect(() => { fetchNews(); }, []);
 
-    return unsubscribe;
-  }, []);
-
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#22C55E" />
-      </View>
-    );
-  }
+  if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#22C55E" /></View>;
 
   return (
     <View style={styles.container}>
@@ -43,17 +43,11 @@ export default function NewsScreen() {
         data={articles}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingVertical: 12 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchNews(); }} tintColor="#22C55E" />}
         renderItem={({ item }) => (
-          <NewsCard
-            article={item}
-            onPress={() => item.url && Linking.openURL(item.url)}
-          />
+          <NewsCard article={item} onPress={() => item.url && Linking.openURL(item.url)} />
         )}
-        ListEmptyComponent={
-          <View style={styles.center}>
-            <Text style={styles.emptyText}>No news yet</Text>
-          </View>
-        }
+        ListEmptyComponent={<View style={styles.center}><Text style={styles.emptyText}>No news available</Text></View>}
       />
     </View>
   );
