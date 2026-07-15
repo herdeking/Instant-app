@@ -49,9 +49,9 @@ function LivePulse() {
 }
 
 export default function MatchCard({ match, onPress }) {
-  const { home, away, homeLogo, awayLogo, date, status, hscore, ascore, comp, minute } = match;
-  const finalHomeLogo = useTeamLogo(home, homeLogo);
-  const finalAwayLogo = useTeamLogo(away, awayLogo);
+  const { home, away, homeLogo, awayLogo, hlogo, alogo, date, status, hscore, ascore, comp, minute } = match;
+  const finalHomeLogo = useTeamLogo(home, hlogo || homeLogo);
+  const finalAwayLogo = useTeamLogo(away, alogo || awayLogo);
   const isLive = status === 'live';
   const isFinished = status === 'finished';
 
