@@ -4,9 +4,11 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { db } from '../firebaseConfig';
 import MatchCard from '../components/MatchCard';
+import AdBanner from '../components/AdBanner';
+import AdBanner from '../components/AdBanner';
 import { COLORS } from '../theme';
 
-const FILTERS = ['Upcoming', 'Live', 'Finished', 'All'];
+const FILTERS = ['All', 'Live', 'Upcoming', 'Finished'];
 
 function parseMatchDate(dateStr) {
   if (!dateStr) return null;
@@ -48,7 +50,7 @@ export default function WatchScreen({ navigation }) {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState('Upcoming');
+  const [filter, setFilter] = useState('All');
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'matches'), (snapshot) => {
@@ -101,6 +103,7 @@ export default function WatchScreen({ navigation }) {
                 )}
               </View>
             </View>
+            <AdBanner />
 
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Matches</Text>
