@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { TouchableOpacity, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,7 +10,7 @@ import TableScreen from '../screens/TableScreen';
 import { COLORS } from '../theme';
 
 const Tab = createBottomTabNavigator();
-const ICONS = { Watch: 'play-circle', Matches: 'football', News: 'newspaper', Table: 'podium' };
+const ICONS = { Livestream: 'play-circle', Matches: 'football', News: 'newspaper', Table: 'podium' };
 
 function AdminEntryButton({ navigation }) {
   return (
@@ -22,7 +22,6 @@ function AdminEntryButton({ navigation }) {
 
 export default function BottomTabs({ navigation: rootNavigation }) {
   const insets = useSafeAreaInsets();
-  const tabBarHeight = 60 + insets.bottom;
 
   return (
     <Tab.Navigator
@@ -34,7 +33,7 @@ export default function BottomTabs({ navigation: rootNavigation }) {
           backgroundColor: COLORS.bgTab,
           borderTopColor: COLORS.border,
           borderTopWidth: 1,
-          height: tabBarHeight,
+          height: 60 + insets.bottom,
           paddingBottom: insets.bottom + 4,
           paddingTop: 8,
         },
@@ -46,10 +45,16 @@ export default function BottomTabs({ navigation: rootNavigation }) {
         ),
       })}
     >
-      <Tab.Screen name="Watch" component={WatchScreen} options={{ title: 'FullTime' }} />
+      <Tab.Screen name="Livestream" component={WatchScreen} options={{ title: 'Livestream' }} />
       <Tab.Screen name="Matches" component={MatchesScreen} />
       <Tab.Screen name="News" component={NewsScreen} />
-      <Tab.Screen name="Table" component={TableScreen} options={{ headerRight: () => <AdminEntryButton navigation={rootNavigation} /> }} />
+      <Tab.Screen
+        name="Table"
+        component={TableScreen}
+        options={{
+          headerRight: () => <AdminEntryButton navigation={rootNavigation} />,
+        }}
+      />
     </Tab.Navigator>
   );
 }
