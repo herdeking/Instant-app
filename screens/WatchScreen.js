@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, FlatList, StyleSheet, Text, ActivityIndicator, RefreshControl, TouchableOpacity, ScrollView } from 'react-native';
+import { View, FlatList, StyleSheet, Text, ActivityIndicator, RefreshControl, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { db } from '../firebaseConfig';
@@ -7,11 +7,12 @@ import MatchCard from '../components/MatchCard';
 import AdBanner from '../components/AdBanner';
 import { COLORS } from '../theme';
 
-const FILTERS = ['All', 'Live', 'Upcoming', 'Finished'];
+const STATUS_FILTERS = ['All', 'Live', 'Upcoming', 'Finished'];
+const DATE_FILTERS = ['Today', 'Tomorrow'];
+const LEAGUE_FILTERS = ['Premier League', 'UCL', 'La Liga', 'Serie A', 'Bundesliga', 'World Cup'];
 
 function parseMatchDate(dateStr) {
   if (!dateStr) return null;
-  // Remove timezone labels like WAT, GMT, UTC, etc.
   const cleaned = dateStr.toString().replace(/[A-Z]{2,4}$/, '').replace(/\//g, '-').trim();
   const d = new Date(cleaned);
   return isNaN(d) ? null : d;
@@ -49,7 +50,10 @@ export default function WatchScreen({ navigation }) {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [dateFilter, setDateFilter] = useState(null);
+  const [leagueFilter, setLeagueFilter] = useState(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'matches'), (snapshot) => {
@@ -59,7 +63,7 @@ export default function WatchScreen({ navigation }) {
           d.formattedDate = formatMatchDate(d.date);
           return d;
         })
-        .filter((m) => m.status !== 'draft'); // hide draft matches
+        .filter((m) => m.status !== 'draft');
       setMatches(sortMatches(data));
       setLoading(false);
       setRefreshing(false);
@@ -71,10 +75,37 @@ export default function WatchScreen({ navigation }) {
   const upcomingCount = matches.filter((m) => m.status === 'upcoming').length;
 
   const filtered = matches.filter((m) => {
-    if (filter === 'All') return true;
-    if (filter === 'Live') return m.status === 'live';
-    if (filter === 'Upcoming') return m.status === 'upcoming';
-    return m.status === 'finished';
+    // Status filter
+    if (statusFilter !== 'All') {
+      if (statusFilter === 'Live' && m.status !== 'live') return false;
+      if (statusFilter === 'Upcoming' && m.status !== 'upcoming') return false;
+      if (statusFilter === 'Finished' && m.status !== 'finished') return false;
+    }
+
+    // Date filter
+    if (dateFilter) {
+      const matchDate = parseMatchDate(m.date);
+      const today = new Date();
+      const tomorrow = new Date();
+      tomorrow.setDate(today.getDate() + 1);
+      if (dateFilter === 'Today' && matchDate?.toDateString() !== today.toDateString()) return false;
+      if (dateFilter === 'Tomorrow' && matchDate?.toDateString() !== tomorrow.toDateString()) return false;
+    }
+
+    // League filter
+    if (leagueFilter) {
+      const comp = (m.comp || '').toLowerCase();
+      const filter = leagueFilter.toLowerCase();
+      if (!comp.includes(filter) && !filter.includes(comp)) return false;
+    }
+
+    // Search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      if (!((m.home || '').toLowerCase().includes(q)) && !((m.away || '').toLowerCase().includes(q))) return false;
+    }
+
+    return true;
   });
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.gold} /></View>;
@@ -87,6 +118,7 @@ export default function WatchScreen({ navigation }) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => setRefreshing(true)} tintColor={COLORS.gold} />}
         ListHeaderComponent={
           <View>
+            {/* Hero */}
             <View style={styles.hero}>
               <Text style={styles.heroEyebrow}>LIVE FOOTBALL STREAMING</Text>
               <Text style={styles.heroTitle}>WATCH{'\n'}<Text style={styles.heroGold}>LIVE</Text>{'\n'}FOOTBALL</Text>
@@ -102,18 +134,66 @@ export default function WatchScreen({ navigation }) {
                 )}
               </View>
             </View>
+
+            {/* Ad Banner */}
             <AdBanner />
 
+            {/* Section header */}
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Matches</Text>
               <Text style={styles.matchCount}>{filtered.length} matches</Text>
             </View>
 
+            {/* Search box */}
+            <View style={styles.searchRow}>
+              <Ionicons name="search" size={16} color={COLORS.textMuted} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search teams..."
+                placeholderTextColor={COLORS.textMuted}
+                value={search}
+                onChangeText={setSearch}
+              />
+              {search ? (
+                <TouchableOpacity onPress={() => setSearch('')}>
+                  <Ionicons name="close" size={16} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {/* Status filters */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContent}>
-              {FILTERS.map((f) => (
-                <TouchableOpacity key={f} style={[styles.filterChip, filter === f && styles.filterChipActive]} onPress={() => setFilter(f)}>
+              {STATUS_FILTERS.map((f) => (
+                <TouchableOpacity
+                  key={f}
+                  style={[styles.filterChip, statusFilter === f && styles.filterChipActive]}
+                  onPress={() => setStatusFilter(f)}
+                >
                   {f === 'Live' && <View style={styles.filterLiveDot} />}
-                  <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{f}</Text>
+                  <Text style={[styles.filterText, statusFilter === f && styles.filterTextActive]}>{f}</Text>
+                </TouchableOpacity>
+              ))}
+              {/* Date filters */}
+              {DATE_FILTERS.map((f) => (
+                <TouchableOpacity
+                  key={f}
+                  style={[styles.filterChip, dateFilter === f && styles.dateChipActive]}
+                  onPress={() => setDateFilter(dateFilter === f ? null : f)}
+                >
+                  <Text style={[styles.filterText, dateFilter === f && styles.dateTextActive]}>📅 {f}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* League filters */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContent}>
+              {LEAGUE_FILTERS.map((f) => (
+                <TouchableOpacity
+                  key={f}
+                  style={[styles.filterChip, leagueFilter === f && styles.filterChipActive]}
+                  onPress={() => setLeagueFilter(leagueFilter === f ? null : f)}
+                >
+                  <Text style={[styles.filterText, leagueFilter === f && styles.filterTextActive]}>{f}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -159,8 +239,8 @@ export default function WatchScreen({ navigation }) {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>⚽</Text>
-            <Text style={styles.emptyText}>No {filter.toLowerCase()} matches</Text>
-            <Text style={styles.emptySubtext}>Check back later</Text>
+            <Text style={styles.emptyText}>No matches found</Text>
+            <Text style={styles.emptySubtext}>Try a different filter</Text>
           </View>
         }
       />
@@ -182,15 +262,19 @@ const styles = StyleSheet.create({
   liveCountText: { color: COLORS.textPrimary, fontSize: 13, fontWeight: '700' },
   upcomingBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.bgCard, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: COLORS.border },
   upcomingText: { color: COLORS.gold, fontSize: 13, fontWeight: '700' },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 20, paddingBottom: 6 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 6 },
   sectionTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800' },
   matchCount: { color: COLORS.textMuted, fontSize: 13 },
-  filterContent: { paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
-  filterChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, backgroundColor: COLORS.bgCard, borderWidth: 1, borderColor: COLORS.border, gap: 5 },
+  searchRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 12, marginVertical: 8, backgroundColor: COLORS.bgCard, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: COLORS.border, gap: 8 },
+  searchInput: { flex: 1, color: COLORS.textPrimary, fontSize: 14 },
+  filterContent: { paddingHorizontal: 12, paddingVertical: 6, gap: 8 },
+  filterChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: COLORS.bgCard, borderWidth: 1, borderColor: COLORS.border, gap: 5 },
   filterChipActive: { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
+  dateChipActive: { backgroundColor: COLORS.bgCardAlt, borderColor: COLORS.gold },
   filterLiveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.live },
-  filterText: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '700' },
+  filterText: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '700' },
   filterTextActive: { color: '#000' },
+  dateTextActive: { color: COLORS.gold },
   matchBlock: { marginBottom: 4 },
   matchDateRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, gap: 8 },
   matchComp: { color: COLORS.gold, fontSize: 10, fontWeight: '800', letterSpacing: 1, flex: 1 },
