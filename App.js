@@ -8,7 +8,7 @@ import { FavoritesProvider } from './context/FavoritesContext';
 import BottomTabs from './navigation/BottomTabs';
 import AdminStack from './navigation/AdminStack';
 import StreamPlayerScreen from './screens/StreamPlayerScreen';
-import { COLORS } from './theme';
+import { COLORS, ThemeProvider } from './theme';
 
 const RootStack = createNativeStackNavigator();
 
@@ -29,6 +29,7 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <FavoritesProvider>
+          <ThemeProvider>
           <NavigationContainer theme={navTheme}>
             <StatusBar style="light" />
             <RootStack.Navigator screenOptions={{ headerShown: false }}>
@@ -37,6 +38,7 @@ export default function App() {
               <RootStack.Screen name="Admin" component={AdminStack} options={{ presentation: 'modal' }} />
             </RootStack.Navigator>
           </NavigationContainer>
+          </ThemeProvider>
         </FavoritesProvider>
       </AuthProvider>
     </SafeAreaProvider>

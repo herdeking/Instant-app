@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { COLORS } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../theme';
 
-export default function StreamPlayerScreen({ route }) {
+export default function StreamPlayerScreen({ route, navigation }) {
+  const { COLORS } = useTheme();
+  const styles = getStyles(COLORS);
   const { match } = route.params || {};
   const servers = [
     match?.stream && { label: match.streamLabel || 'Server 1', url: match.stream },
@@ -12,10 +15,14 @@ export default function StreamPlayerScreen({ route }) {
   ].filter(Boolean);
 
   const [activeServer, setActiveServer] = useState(0);
+  const [controlsVisible, setControlsVisible] = useState(true);
 
   if (!servers.length) {
     return (
       <View style={styles.center}>
+        <TouchableOpacity style={styles.backBtnFallback} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
+        </TouchableOpacity>
         <Text style={styles.errorText}>No stream available for this match</Text>
       </View>
     );
@@ -23,22 +30,7 @@ export default function StreamPlayerScreen({ route }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{match.home} vs {match.away}</Text>
-        {servers.length > 1 && (
-          <View style={styles.serverRow}>
-            {servers.map((s, i) => (
-              <TouchableOpacity
-                key={i}
-                style={[styles.serverBtn, activeServer === i && styles.serverBtnActive]}
-                onPress={() => setActiveServer(i)}
-              >
-                <Text style={[styles.serverBtnText, activeServer === i && styles.serverBtnTextActive]}>{s.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
+      <StatusBar hidden />
       <WebView
         key={activeServer}
         source={{ uri: servers[activeServer].url }}
@@ -48,20 +40,42 @@ export default function StreamPlayerScreen({ route }) {
         javaScriptEnabled
         domStorageEnabled
       />
+      <TouchableOpacity
+        style={styles.floatingBack}
+        onPress={() => setControlsVisible((v) => !v)}
+        onLongPress={() => navigation.goBack()}
+      >
+        <Ionicons name="arrow-back" size={20} color="#fff" />
+      </TouchableOpacity>
+      {controlsVisible && servers.length > 1 && (
+        <View style={styles.floatingServerRow}>
+          {servers.map((s, i) => (
+            <TouchableOpacity
+              key={i}
+              style={[styles.serverBtn, activeServer === i && styles.serverBtnActive]}
+              onPress={() => setActiveServer(i)}
+            >
+              <Text style={[styles.serverBtnText, activeServer === i && styles.serverBtnTextActive]}>{s.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  header: { backgroundColor: COLORS.bg, padding: 12 },
-  title: { color: COLORS.textPrimary, fontSize: 15, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
-  serverRow: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
-  serverBtn: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, backgroundColor: COLORS.bgCard, borderWidth: 1, borderColor: COLORS.border },
-  serverBtnActive: { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
-  serverBtnText: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '700' },
-  serverBtnTextActive: { color: '#000' },
-  webview: { flex: 1 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.bg, padding: 20 },
-  errorText: { color: COLORS.textPrimary, fontSize: 15, textAlign: 'center' },
-});
+function getStyles(COLORS) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#000' },
+    webview: { flex: 1 },
+    floatingBack: { position: 'absolute', top: 12, left: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
+    floatingServerRow: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', gap: 6, zIndex: 10 },
+    serverBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+    serverBtnActive: { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
+    serverBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+    serverBtnTextActive: { color: '#000' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', padding: 20 },
+    backBtnFallback: { position: 'absolute', top: 12, left: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
+    errorText: { color: COLORS.textPrimary, fontSize: 15, textAlign: 'center' },
+  });
+}
