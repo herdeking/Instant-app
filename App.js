@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './context/AuthContext';
+import { FavoritesProvider } from './context/FavoritesContext';
 import BottomTabs from './navigation/BottomTabs';
 import AdminStack from './navigation/AdminStack';
 import StreamPlayerScreen from './screens/StreamPlayerScreen';
@@ -27,14 +28,16 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <NavigationContainer theme={navTheme}>
-          <StatusBar style="light" />
-          <RootStack.Navigator screenOptions={{ headerShown: false }}>
-            <RootStack.Screen name="MainTabs" component={BottomTabs} />
-            <RootStack.Screen name="StreamPlayer" component={StreamPlayerScreen} options={{ headerShown: true, title: '', presentation: 'fullScreenModal', headerStyle: { backgroundColor: COLORS.bg }, headerTintColor: COLORS.textPrimary }} />
-            <RootStack.Screen name="Admin" component={AdminStack} options={{ presentation: 'modal' }} />
-          </RootStack.Navigator>
-        </NavigationContainer>
+        <FavoritesProvider>
+          <NavigationContainer theme={navTheme}>
+            <StatusBar style="light" />
+            <RootStack.Navigator screenOptions={{ headerShown: false }}>
+              <RootStack.Screen name="MainTabs" component={BottomTabs} />
+              <RootStack.Screen name="StreamPlayer" component={StreamPlayerScreen} options={{ headerShown: true, title: '', presentation: 'fullScreenModal', headerStyle: { backgroundColor: COLORS.bg }, headerTintColor: COLORS.textPrimary }} />
+              <RootStack.Screen name="Admin" component={AdminStack} options={{ presentation: 'modal' }} />
+            </RootStack.Navigator>
+          </NavigationContainer>
+        </FavoritesProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
