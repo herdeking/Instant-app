@@ -9,16 +9,22 @@ const INJECTED_CSS = `
     var style = document.createElement('style');
     style.innerHTML = \`
       header, nav, .header, .navbar, .top-bar, .server-list, .server-bar,
-      [class*="header"], [class*="navbar"], [class*="topbar"], [class*="server"] {
+      footer, .footer, .controls-bar, .bottom-bar, .player-footer,
+      [class*="header"], [class*="navbar"], [class*="topbar"], [class*="server"],
+      [class*="footer"], [class*="bottom-bar"], [class*="controlbar"] {
         display: none !important;
         height: 0 !important;
         max-height: 0 !important;
         overflow: hidden !important;
       }
-      body, html { margin: 0 !important; padding: 0 !important; }
-      video, iframe { width: 100% !important; height: 100% !important; }
+      body, html { margin: 0 !important; padding: 0 !important; height: 100% !important; }
+      video, iframe { width: 100% !important; height: 100% !important; object-fit: contain !important; }
     \`;
     document.head.appendChild(style);
+
+    // Fallback: nudge body content upward in case footer controls
+    // aren't caught by the class-name rules above.
+    document.body.style.transform = 'translateY(-40px)';
   })();
   true;
 `;
@@ -97,7 +103,7 @@ function getStyles(COLORS) {
     container: { flex: 1, backgroundColor: '#000' },
     webview: { flex: 1 },
     floatingBack: { position: 'absolute', top: 12, left: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
-    floatingServerRow: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', gap: 6, zIndex: 10 },
+    floatingServerRow: { position: 'absolute', top: 0, left: 0, right: 0, height: 56, paddingTop: 12, paddingLeft: 60, paddingRight: 12, backgroundColor: '#000', flexDirection: 'row', gap: 6, zIndex: 10, alignItems: 'flex-start' },
     serverBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
     serverBtnActive: { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
     serverBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
