@@ -17,8 +17,25 @@ const INJECTED_CSS = `
         max-height: 0 !important;
         overflow: hidden !important;
       }
-      body, html { margin: 0 !important; padding: 0 !important; height: 100% !important; }
-      video, iframe { width: 100% !important; height: 100% !important; object-fit: contain !important; }
+      body, html { margin: 0 !important; padding: 0 !important; height: 100% !important; width: 100% !important; overflow: hidden !important; }
+      video, iframe {
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: none !important;
+        max-height: none !important;
+        object-fit: contain !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+      }
+      /* Common player wrapper patterns that constrain video to a fixed box */
+      .player, .player-wrapper, .video-wrapper, .video-container, .jwplayer,
+      [class*="player-wrap"], [class*="video-wrap"], [id*="player"] {
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: none !important;
+        max-height: none !important;
+      }
     \`;
     document.head.appendChild(style);
 
