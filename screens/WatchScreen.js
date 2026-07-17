@@ -12,15 +12,17 @@ const STATUS_FILTERS = ['All', 'Live', 'Upcoming', 'Finished'];
 const DATE_FILTERS = ['Today', 'Tomorrow'];
 const LEAGUE_FILTERS = ['Premier League', 'UCL', 'La Liga', 'Serie A', 'Bundesliga', 'World Cup'];
 
-function parseMatchDate(dateStr) {
+function parseMatchDate(dateStr, timeStr) {
   if (!dateStr) return null;
   const cleaned = dateStr.toString().replace(/[A-Z]{2,4}$/, '').replace(/\//g, '-').trim();
-  const d = new Date(cleaned);
+  const timePart = (timeStr || '00:00').toString().trim();
+  // Combine as local time (no 'Z' suffix, so JS parses it in device timezone)
+  const d = new Date(`${cleaned}T${timePart}:00`);
   return isNaN(d) ? null : d;
 }
 
-function formatMatchDate(dateStr) {
-  const d = parseMatchDate(dateStr);
+function formatMatchDate(dateStr, rawTimeStr) {
+  const d = parseMatchDate(dateStr, rawTimeStr);
   if (!d) return dateStr || '';
   const today = new Date();
   const tomorrow = new Date();
@@ -37,8 +39,8 @@ function sortMatches(matches) {
   return [...matches].sort((a, b) => {
     const statusDiff = (order[a.status] ?? 1) - (order[b.status] ?? 1);
     if (statusDiff !== 0) return statusDiff;
-    const dA = parseMatchDate(a.date) || new Date(0);
-    const dB = parseMatchDate(b.date) || new Date(0);
+    const dA = parseMatchDate(a.date, a.time) || new Date(0);
+    const dB = parseMatchDate(b.date, b.time) || new Date(0);
     return a.status === 'finished' ? dB - dA : dA - dB;
   });
 }
@@ -63,10 +65,10 @@ export default function WatchScreen({ navigation }) {
       const data = snapshot.docs
         .map((doc) => {
           const d = { id: doc.id, ...doc.data() };
-          d.formattedDate = formatMatchDate(d.date);
+          d.formattedDate = formatMatchDate(d.date, d.time);
           return d;
         })
-        .filter((m) => m.status !== 'draft');
+        .filter((m) => m.status !== 'draft' && m.published !== false);
       setMatches(sortMatches(data));
       setLoading(false);
       setRefreshing(false);
@@ -87,7 +89,7 @@ export default function WatchScreen({ navigation }) {
 
     // Date filter
     if (dateFilter) {
-      const matchDate = parseMatchDate(m.date);
+      const matchDate = parseMatchDate(m.date, m.time);
       const today = new Date();
       const tomorrow = new Date();
       tomorrow.setDate(today.getDate() + 1);
@@ -118,7 +120,7 @@ export default function WatchScreen({ navigation }) {
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => setRefreshing(true)} tintColor={COLORS.gold} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 1500); }} tintColor={COLORS.gold} />}
         ListHeaderComponent={
           <View>
             {/* Hero */}

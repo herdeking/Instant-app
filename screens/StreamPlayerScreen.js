@@ -4,15 +4,41 @@ import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme';
 
+const INJECTED_CSS = `
+  (function() {
+    var style = document.createElement('style');
+    style.innerHTML = \`
+      header, nav, .header, .navbar, .top-bar, .server-list, .server-bar,
+      [class*="header"], [class*="navbar"], [class*="topbar"], [class*="server"] {
+        display: none !important;
+        height: 0 !important;
+        max-height: 0 !important;
+        overflow: hidden !important;
+      }
+      body, html { margin: 0 !important; padding: 0 !important; }
+      video, iframe { width: 100% !important; height: 100% !important; }
+    \`;
+    document.head.appendChild(style);
+  })();
+  true;
+`;
+
 export default function StreamPlayerScreen({ route, navigation }) {
   const { COLORS } = useTheme();
   const styles = getStyles(COLORS);
   const { match } = route.params || {};
-  const servers = [
-    match?.stream && { label: match.streamLabel || 'Server 1', url: match.stream },
-    match?.stream2 && { label: match.stream2Label || 'Server 2', url: match.stream2 },
-    match?.stream3 && { label: match.stream3Label || 'Server 3', url: match.stream3 },
-  ].filter(Boolean);
+
+  // Prefer the `streams` array (supports any number of servers).
+  // Fall back to legacy flat fields (stream, stream2, stream3) for older match docs.
+  const servers = (Array.isArray(match?.streams) && match.streams.length > 0)
+    ? match.streams
+        .filter((s) => s?.url)
+        .map((s, i) => ({ label: s.label || `Server ${i + 1}`, url: s.url }))
+    : [
+        match?.stream && { label: match.streamLabel || 'Server 1', url: match.stream },
+        match?.stream2 && { label: match.stream2Label || 'Server 2', url: match.stream2 },
+        match?.stream3 && { label: match.stream3Label || 'Server 3', url: match.stream3 },
+      ].filter(Boolean);
 
   const [activeServer, setActiveServer] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -39,6 +65,8 @@ export default function StreamPlayerScreen({ route, navigation }) {
         mediaPlaybackRequiresUserAction={false}
         javaScriptEnabled
         domStorageEnabled
+        injectedJavaScript={INJECTED_CSS}
+        onMessage={() => {}}
       />
       <TouchableOpacity
         style={styles.floatingBack}
