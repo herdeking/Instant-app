@@ -60,19 +60,30 @@ export default function WatchScreen({ navigation }) {
   const [leagueFilter, setLeagueFilter] = useState(null);
   const [search, setSearch] = useState('');
 
+  const [fetchError, setFetchError] = useState(null);
+
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'matches'), (snapshot) => {
-      const data = snapshot.docs
-        .map((doc) => {
-          const d = { id: doc.id, ...doc.data() };
-          d.formattedDate = formatMatchDate(d.date, d.time);
-          return d;
-        })
-        .filter((m) => m.status !== 'draft' && m.published !== false);
-      setMatches(sortMatches(data));
-      setLoading(false);
-      setRefreshing(false);
-    });
+    const unsubscribe = onSnapshot(
+      collection(db, 'matches'),
+      (snapshot) => {
+        setFetchError(null);
+        const data = snapshot.docs
+          .map((doc) => {
+            const d = { id: doc.id, ...doc.data() };
+            d.formattedDate = formatMatchDate(d.date, d.time);
+            return d;
+          })
+          .filter((m) => m.status !== 'draft' && m.published !== false);
+        setMatches(sortMatches(data));
+        setLoading(false);
+        setRefreshing(false);
+      },
+      (error) => {
+        setFetchError(error.message || 'Unknown error loading matches');
+        setLoading(false);
+        setRefreshing(false);
+      }
+    );
     return unsubscribe;
   }, []);
 
@@ -246,9 +257,9 @@ export default function WatchScreen({ navigation }) {
         }}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>⚽</Text>
-            <Text style={styles.emptyText}>No matches found</Text>
-            <Text style={styles.emptySubtext}>Try a different filter</Text>
+            <Text style={styles.emptyIcon}>{fetchError ? '⚠️' : '⚽'}</Text>
+            <Text style={styles.emptyText}>{fetchError ? 'Failed to load matches' : 'No matches found'}</Text>
+            <Text style={styles.emptySubtext}>{fetchError || 'Try a different filter'}</Text>
           </View>
         }
       />
