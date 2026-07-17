@@ -7,10 +7,11 @@ import WatchScreen from '../screens/WatchScreen';
 import MatchesScreen from '../screens/MatchesScreen';
 import NewsScreen from '../screens/NewsScreen';
 import TableScreen from '../screens/TableScreen';
+import LivescoreScreen from '../screens/LivescoreScreen';
 import { COLORS } from '../theme';
 
 const Tab = createBottomTabNavigator();
-const ICONS = { Livestream: 'play-circle', Matches: 'football', News: 'newspaper', Table: 'podium' };
+const ICONS = { Livestream: 'play-circle', Matches: 'football', Livescore: 'pulse', News: 'newspaper', Table: 'podium' };
 
 export default function BottomTabs({ navigation: rootNavigation }) {
   const insets = useSafeAreaInsets();
@@ -51,6 +52,7 @@ export default function BottomTabs({ navigation: rootNavigation }) {
     >
       <Tab.Screen name="Livestream" component={WatchScreen} options={{ title: 'Livestream', headerShown: false }} />
       <Tab.Screen name="Matches" component={MatchesScreen} />
+        <Tab.Screen name="Livescore" component={LivescoreScreen} />
       <Tab.Screen name="News" component={NewsScreen} />
       <Tab.Screen name="Table" component={TableScreen} options={{ headerRight: () => <AdminBtn /> }} />
     </Tab.Navigator>

@@ -11807,3 +11807,11 @@
 {"_e":"metro:bundling:progress","_t":1784250813955,"id":"1","progress":0.999,"total":1032,"current":1032}
 {"_e":"metro:bundling:done","_t":1784250816491,"id":"1","total":1032,"ms":85559.906698}
 {"_e":"metro:server_log","_t":1784250946573,"level":"error","data":["[timeout] connection terminated with Device for app='%s' on device='%s' after not responding for %s seconds.","com.instantlivefootball.fulltime","2409BRN2CA - 16 - API 36","60"]}
+{"_e":"root:init","_t":1784253904519,"format":"v0-jsonl","version":"57.0.6"}
+{"_e":"env:mode","_t":1784253904531,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1784253904576,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1784253909146,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../../../app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1784253913858,"serverRoot":"../../..","projectRoot":"../../..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"metro:server_log","_t":1784253914916,"level":"error","data":["An unknown error occurred while installing React Native DevTools. Details:\n\nCannot read properties of undefined (reading 'arm64')"]}
+{"_e":"expo:dev-tools-plugin:load","_t":1784253917544,"plugins":[]}
+{"_e":"metro:instantiate","_t":1784253948738,"atlas":false,"workers":6,"host":"::","port":8081}
