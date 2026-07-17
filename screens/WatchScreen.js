@@ -61,12 +61,14 @@ export default function WatchScreen({ navigation }) {
   const [search, setSearch] = useState('');
 
   const [fetchError, setFetchError] = useState(null);
+  const [debugStatus, setDebugStatus] = useState('connecting');
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, 'matches'),
       (snapshot) => {
         setFetchError(null);
+        setDebugStatus(`connected, ${snapshot.docs.length} docs, fromCache=${snapshot.metadata.fromCache}`);
         const data = snapshot.docs
           .map((doc) => {
             const d = { id: doc.id, ...doc.data() };
@@ -135,6 +137,9 @@ export default function WatchScreen({ navigation }) {
         ListHeaderComponent={
           <View>
             {/* Hero */}
+            <View style={{ backgroundColor: '#000', padding: 8 }}>
+              <Text style={{ color: '#0f0', fontSize: 10 }}>DEBUG: {debugStatus} {fetchError ? `ERROR: ${fetchError}` : ''}</Text>
+            </View>
             <View style={styles.hero}>
               <Text style={styles.heroEyebrow}>LIVE FOOTBALL STREAMING</Text>
               <Text style={styles.heroTitle}>WATCH{'\n'}<Text style={styles.heroGold}>LIVE</Text>{'\n'}FOOTBALL</Text>
