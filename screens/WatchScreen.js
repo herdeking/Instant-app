@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, FlatList, StyleSheet, Text, ActivityIndicator, RefreshControl, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, getDocs } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { db } from '../firebaseConfig';
 import MatchCard from '../components/MatchCard';
@@ -88,6 +88,41 @@ export default function WatchScreen({ navigation }) {
     );
     return unsubscribe;
   }, []);
+
+  // Fallback: on restrictive mobile networks, the real-time listener can get
+  // stuck serving an empty local cache and never receive the live server
+  // snapshot. If that happens, force a one-time direct fetch after a short
+  // delay so the user isn't stuck on "no matches" forever.
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (matches.length === 0) {
+        setDebugStatus((prev) => `${prev} | fallback fetch triggered`);
+        getDocs(collection(db, 'matches'))
+          .then((snapshot) => {
+            const data = snapshot.docs
+              .map((doc) => {
+                const d = { id: doc.id, ...doc.data() };
+                d.formattedDate = formatMatchDate(d.date, d.time);
+                return d;
+              })
+              .filter((m) => m.status !== 'draft' && m.published !== false);
+            if (data.length > 0) {
+              setMatches(sortMatches(data));
+              setFetchError(null);
+              setDebugStatus(`fallback succeeded, ${data.length} docs`);
+            } else {
+              setDebugStatus('fallback returned 0 docs too');
+            }
+            setLoading(false);
+          })
+          .catch((err) => {
+            setDebugStatus(`fallback failed: ${err.message}`);
+            setLoading(false);
+          });
+      }
+    }, 4000);
+    return () => clearTimeout(timeout);
+  }, [matches.length]);
 
   const liveCount = matches.filter((m) => m.status === 'live').length;
   const upcomingCount = matches.filter((m) => m.status === 'upcoming').length;

@@ -14,15 +14,16 @@ const firebaseConfig = {
 const alreadyInitialized = getApps().length > 0;
 const app = alreadyInitialized ? getApp() : initializeApp(firebaseConfig);
 
-// React Native's networking stack doesn't reliably support Firestore's default
-// WebSocket-based streaming transport, especially in production/standalone builds.
-// Long-polling is slower but far more reliable on-device.
+// Mobile carrier networks (common in Nigeria) frequently interfere with
+// persistent WebSocket connections via proxying/DPI. Auto-detect long-polling
+// lets Firestore probe the network and fall back automatically when needed,
+// which is more robust than forcing one transport blindly.
 let db;
 if (alreadyInitialized) {
   db = getFirestore(app);
 } else {
   db = initializeFirestore(app, {
-    experimentalForceLongPolling: true,
+    experimentalAutoDetectLongPolling: true,
     useFetchStreams: false,
   });
 }
