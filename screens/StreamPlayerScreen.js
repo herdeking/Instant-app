@@ -27,7 +27,7 @@ const INJECTED_CSS = `
         height: 100vh !important;
         max-width: none !important;
         max-height: none !important;
-        object-fit: contain !important;
+        object-fit: cover !important;
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
