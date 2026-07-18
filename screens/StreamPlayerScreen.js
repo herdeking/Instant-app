@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Image } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme';
 import { getMatchClock, getKickoffDate } from '../utils/matchClock';
 
@@ -67,7 +68,8 @@ const INJECTED_CSS = `
 
 export default function StreamPlayerScreen({ route, navigation }) {
   const { COLORS } = useTheme();
-  const styles = getStyles(COLORS);
+  const insets = useSafeAreaInsets();
+  const styles = getStyles(COLORS, insets);
   const { match } = route.params || {};
 
   // Lock to landscape while watching, restore portrait when leaving this screen.
@@ -126,6 +128,11 @@ export default function StreamPlayerScreen({ route, navigation }) {
         injectedJavaScript={INJECTED_CSS}
         onMessage={() => {}}
       />
+      <Image
+        source={require('../assets/icon.png')}
+        style={styles.watermark}
+        resizeMode="contain"
+      />
       <TouchableOpacity
         style={styles.floatingBack}
         onPress={() => setControlsVisible((v) => !v)}
@@ -170,8 +177,9 @@ export default function StreamPlayerScreen({ route, navigation }) {
   );
 }
 
-function getStyles(COLORS) {
+function getStyles(COLORS, insets = { top: 0, bottom: 0, left: 0, right: 0 }) {
   return StyleSheet.create({
+    watermark: { position: 'absolute', top: 12 + insets.top, right: 12 + insets.right, width: 32, height: 32, opacity: 0.55, zIndex: 9, borderRadius: 8 },
     container: { flex: 1, backgroundColor: '#000' },
     webview: { flex: 1 },
     floatingBack: { position: 'absolute', top: 12, left: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
@@ -180,7 +188,7 @@ function getStyles(COLORS) {
     serverBtnActive: { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
     serverBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
     serverBtnTextActive: { color: '#000' },
-    scoreOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(0,0,0,0.75)', paddingHorizontal: 16, paddingVertical: 10, zIndex: 10 },
+    scoreOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(0,0,0,0.75)', paddingHorizontal: 16 + insets.right, paddingVertical: 10, paddingBottom: 10 + insets.bottom, zIndex: 10 },
     scoreOverlayTeam: { color: '#fff', fontSize: 13, fontWeight: '700', flex: 1 },
     scoreOverlayTeamRight: { textAlign: 'right' },
     scoreOverlayCenter: { alignItems: 'center', paddingHorizontal: 16, gap: 2 },
