@@ -7,6 +7,7 @@ import { db } from '../firebaseConfig';
 import MatchCard from '../components/MatchCard';
 import AdBanner from '../components/AdBanner';
 import AdMobBanner from '../components/AdMobBanner';
+import { showInterstitialThenContinue } from '../utils/interstitialAd';
 import { useTheme } from '../theme';
 
 const STATUS_FILTERS = ['All', 'Live', 'Upcoming', 'Finished'];
@@ -138,6 +139,7 @@ export default function WatchScreen({ navigation }) {
             {/* Hero */}
             <View style={styles.hero}>
               <Text style={styles.heroEyebrow}>LIVE FOOTBALL STREAMING</Text>
+              <AdMobBanner />
               <Text style={styles.heroTitle}>WATCH{'\n'}<Text style={styles.heroGold}>LIVE</Text>{'\n'}FOOTBALL</Text>
               <TouchableOpacity onPress={toggleTheme} style={[styles.themeToggle, { backgroundColor: COLORS.bgCard, borderColor: COLORS.border }]}>
                   <Ionicons name={mode === 'dark' ? 'sunny' : 'moon'} size={16} color={COLORS.gold} />
@@ -237,7 +239,7 @@ export default function WatchScreen({ navigation }) {
               </View>
               <MatchCard
                 match={item}
-                onPress={() => streamLink && navigation.navigate('StreamPlayer', { match: item })}
+                onPress={() => streamLink && showInterstitialThenContinue(() => navigation.navigate('StreamPlayer', { match: item }))}
               />
               {streamLink && (
                 <TouchableOpacity
@@ -246,7 +248,7 @@ export default function WatchScreen({ navigation }) {
                     item.status === 'finished' ? styles.watchBtnReplay :
                     styles.watchBtnUpcoming
                   ]}
-                  onPress={() => navigation.navigate('StreamPlayer', { match: item })}
+                  onPress={() => showInterstitialThenContinue(() => navigation.navigate('StreamPlayer', { match: item }))}
                 >
                   <Ionicons name="play" size={14} color={item.status === 'upcoming' ? COLORS.textPrimary : '#fff'} />
                   <Text style={item.status === 'upcoming' ? styles.watchBtnTextDark : styles.watchBtnText}>
