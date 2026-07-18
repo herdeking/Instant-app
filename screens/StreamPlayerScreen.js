@@ -8,6 +8,7 @@ import { useTheme } from '../theme';
 const INJECTED_CSS = `
   (function() {
     var style = document.createElement('style');
+    style.id = 'ft-force-fullscreen-style';
     style.innerHTML = \`
       header, nav, .header, .navbar, .top-bar, .server-list, .server-bar,
       footer, .footer, .controls-bar, .bottom-bar, .player-footer,
@@ -43,6 +44,22 @@ const INJECTED_CSS = `
     // Fallback: nudge body content upward in case footer controls
     // aren't caught by the class-name rules above.
     document.body.style.transform = 'translateY(-40px)';
+
+    // Re-apply sizing whenever the viewport changes (e.g. on device rotation).
+    // vw/vh units are calculated once at load time and don't auto-update
+    // reliably inside some WebView player embeds, so force a reflow.
+    function forceFullscreenResize() {
+      var els = document.querySelectorAll('video, iframe');
+      for (var i = 0; i < els.length; i++) {
+        els[i].style.width = window.innerWidth + 'px';
+        els[i].style.height = window.innerHeight + 'px';
+      }
+    }
+    window.addEventListener('resize', forceFullscreenResize);
+    window.addEventListener('orientationchange', function() {
+      setTimeout(forceFullscreenResize, 300);
+    });
+    setTimeout(forceFullscreenResize, 500);
   })();
   true;
 `;
@@ -54,7 +71,10 @@ export default function StreamPlayerScreen({ route, navigation }) {
 
   // Lock to landscape while watching, restore portrait when leaving this screen.
   useEffect(() => {
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+    // Lock to a single specific landscape orientation (not the generic
+    // LANDSCAPE value, which allows switching between left/right and can
+    // cause continuous re-orientation loops on some Android devices).
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT);
     return () => {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
     };
