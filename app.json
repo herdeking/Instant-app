@@ -39,8 +39,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "c65ec606-a451-44c8-b2d6-4ba9ee0ec974"
+        "projectId": "33a33c1e-f467-42ba-bd6b-6282a55954ca"
       }
-    }
+    },
+    "owner": "pesfootball"
   }
 }
