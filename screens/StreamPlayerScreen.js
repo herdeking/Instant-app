@@ -4,6 +4,7 @@ import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useTheme } from '../theme';
+import { getMatchClock, getKickoffDate } from '../utils/matchClock';
 
 const INJECTED_CSS = `
   (function() {
@@ -95,6 +96,11 @@ export default function StreamPlayerScreen({ route, navigation }) {
   const [activeServer, setActiveServer] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
 
+  const kickoff = getKickoffDate(match?.date, match?.time);
+  const clock = getMatchClock(kickoff);
+  const isLive = match?.status === 'live';
+  const isFinished = match?.status === 'finished';
+
   if (!servers.length) {
     return (
       <View style={styles.center}>
@@ -127,6 +133,26 @@ export default function StreamPlayerScreen({ route, navigation }) {
       >
         <Ionicons name="arrow-back" size={20} color="#fff" />
       </TouchableOpacity>
+      {match?.home && match?.away && (
+        <View style={styles.scoreOverlay}>
+          <Text style={styles.scoreOverlayTeam} numberOfLines={1}>{match.home}</Text>
+          <View style={styles.scoreOverlayCenter}>
+            {isLive || isFinished ? (
+              <Text style={styles.scoreOverlayScore}>{match.hscore ?? 0} - {match.ascore ?? 0}</Text>
+            ) : (
+              <Text style={styles.scoreOverlayVs}>VS</Text>
+            )}
+            {isLive && clock.display ? (
+              <View style={styles.scoreOverlayClockBadge}>
+                <Text style={styles.scoreOverlayClockText}>{clock.display}</Text>
+              </View>
+            ) : isFinished ? (
+              <Text style={styles.scoreOverlayStatus}>FT</Text>
+            ) : null}
+          </View>
+          <Text style={[styles.scoreOverlayTeam, styles.scoreOverlayTeamRight]} numberOfLines={1}>{match.away}</Text>
+        </View>
+      )}
       {controlsVisible && servers.length > 1 && (
         <View style={styles.floatingServerRow}>
           {servers.map((s, i) => (
@@ -154,6 +180,15 @@ function getStyles(COLORS) {
     serverBtnActive: { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
     serverBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
     serverBtnTextActive: { color: '#000' },
+    scoreOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(0,0,0,0.75)', paddingHorizontal: 16, paddingVertical: 10, zIndex: 10 },
+    scoreOverlayTeam: { color: '#fff', fontSize: 13, fontWeight: '700', flex: 1 },
+    scoreOverlayTeamRight: { textAlign: 'right' },
+    scoreOverlayCenter: { alignItems: 'center', paddingHorizontal: 16, gap: 2 },
+    scoreOverlayScore: { color: COLORS.gold, fontSize: 18, fontWeight: '900' },
+    scoreOverlayVs: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '800', letterSpacing: 1 },
+    scoreOverlayClockBadge: { backgroundColor: COLORS.live, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 2 },
+    scoreOverlayClockText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+    scoreOverlayStatus: { color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '800', marginTop: 2 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', padding: 20 },
     backBtnFallback: { position: 'absolute', top: 12, left: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
     errorText: { color: COLORS.textPrimary, fontSize: 15, textAlign: 'center' },
