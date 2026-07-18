@@ -7,6 +7,7 @@ import WatchScreen from '../screens/WatchScreen';
 import MatchesScreen from '../screens/MatchesScreen';
 import NewsScreen from '../screens/NewsScreen';
 import TableScreen from '../screens/TableScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 import LivescoreScreen from '../screens/LivescoreScreen';
 import { COLORS } from '../theme';
 
@@ -19,7 +20,7 @@ export default function BottomTabs({ navigation: rootNavigation }) {
   function AdminBtn() {
     return (
       <TouchableOpacity
-        onPress={() => rootNavigation.navigate('Admin')}
+        onPress={() => rootNavigation.navigate('Settings')}
         style={styles.adminBtn}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >

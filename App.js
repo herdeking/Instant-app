@@ -7,6 +7,7 @@ import { AuthProvider } from './context/AuthContext';
 import { FavoritesProvider } from './context/FavoritesContext';
 import BottomTabs from './navigation/BottomTabs';
 import AdminStack from './navigation/AdminStack';
+import SettingsScreen from './screens/SettingsScreen';
 import StreamPlayerScreen from './screens/StreamPlayerScreen';
 import { COLORS, ThemeProvider } from './theme';
 
@@ -36,6 +37,7 @@ export default function App() {
               <RootStack.Screen name="MainTabs" component={BottomTabs} />
               <RootStack.Screen name="StreamPlayer" component={StreamPlayerScreen} options={{ headerShown: true, title: '', presentation: 'fullScreenModal', headerStyle: { backgroundColor: COLORS.bg }, headerTintColor: COLORS.textPrimary }} />
               <RootStack.Screen name="Admin" component={AdminStack} options={{ presentation: 'modal' }} />
+              <RootStack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: true, title: 'Settings' }} />
             </RootStack.Navigator>
           </NavigationContainer>
           </ThemeProvider>

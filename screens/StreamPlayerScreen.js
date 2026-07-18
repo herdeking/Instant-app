@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { useTheme } from '../theme';
 
 const INJECTED_CSS = `
@@ -50,6 +51,14 @@ export default function StreamPlayerScreen({ route, navigation }) {
   const { COLORS } = useTheme();
   const styles = getStyles(COLORS);
   const { match } = route.params || {};
+
+  // Lock to landscape while watching, restore portrait when leaving this screen.
+  useEffect(() => {
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+    return () => {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+    };
+  }, []);
 
   // Prefer the `streams` array (supports any number of servers).
   // Fall back to legacy flat fields (stream, stream2, stream3) for older match docs.
