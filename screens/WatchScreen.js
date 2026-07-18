@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { db } from '../firebaseConfig';
 import MatchCard from '../components/MatchCard';
 import AdBanner from '../components/AdBanner';
-import AdMobBanner from '../components/AdMobBanner';
 import { useTheme } from '../theme';
 
 const STATUS_FILTERS = ['All', 'Live', 'Upcoming', 'Finished'];
@@ -157,7 +156,6 @@ export default function WatchScreen({ navigation }) {
 
             {/* Ad Banner */}
             <AdBanner />
-            <AdMobBanner />
 
             {/* Section header */}
             <View style={styles.sectionHeader}>
