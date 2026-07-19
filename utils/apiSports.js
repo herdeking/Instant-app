@@ -12,18 +12,14 @@ async function getTeamId(teamName) {
   if (teamIdCache[teamName]) return teamIdCache[teamName];
 
   try {
-    console.log('[apiSports] Fetching team ID for:', teamName);
     const res = await fetch(`${BASE_URL}/teams?search=${encodeURIComponent(teamName)}`, {
       headers: { 'x-apisports-key': API_KEY },
     });
-    console.log('[apiSports] Team search response status:', res.status);
     const data = await res.json();
-    console.log('[apiSports] Team search data:', JSON.stringify(data).slice(0, 300));
     const id = data?.response?.[0]?.team?.id || null;
     if (id) teamIdCache[teamName] = id;
     return id;
-  } catch (err) {
-    console.log('[apiSports] getTeamId ERROR:', err?.message || err);
+  } catch {
     return null;
   }
 }
