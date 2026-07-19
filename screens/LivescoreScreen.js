@@ -23,6 +23,7 @@ export default function LivescoreScreen() {
   const [liveData, setLiveData] = useState({}); // matchId -> api-sports fixture data
   const tickRef = useRef(0);
   const [, forceTick] = useState(0);
+  const [debugMsg, setDebugMsg] = useState('not started');
 
   useEffect(() => {
     const q = query(collection(db, 'matches'), where('status', '==', 'live'));
@@ -40,10 +41,16 @@ export default function LivescoreScreen() {
     let cancelled = false;
 
     async function pollFixtures() {
+      setDebugMsg(`polling ${matches.length} matches...`);
       const results = {};
       for (const m of matches) {
-        const fixture = await getLiveFixture(m.home, m.away, m.date);
-        if (fixture) results[m.id] = fixture;
+        try {
+          const fixture = await getLiveFixture(m.home, m.away, m.date);
+          if (fixture) results[m.id] = fixture;
+          setDebugMsg(`${m.home} vs ${m.away}: ${fixture ? 'FOUND' : 'null (no fixture)'}`);
+        } catch (err) {
+          setDebugMsg(`ERROR for ${m.home}: ${err?.message || err}`);
+        }
       }
       if (!cancelled) setLiveData(results);
     }
@@ -84,6 +91,7 @@ export default function LivescoreScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Livescore</Text>
         <Text style={styles.headerSubtitle}>{matches.length} live now</Text>
+        <Text style={{ color: '#0f0', fontSize: 10 }}>{debugMsg}</Text>
       </View>
       <FlatList
         data={matches}
