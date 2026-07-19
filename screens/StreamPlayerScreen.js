@@ -61,7 +61,23 @@ const INJECTED_CSS = `
     window.addEventListener('orientationchange', function() {
       setTimeout(forceFullscreenResize, 300);
     });
-    setTimeout(forceFullscreenResize, 500);
+
+    // Video elements inside these embeds often load asynchronously after
+    // the page itself finishes loading, so a single delayed call can miss
+    // them. Poll repeatedly for the first few seconds to catch late loads.
+    var pollCount = 0;
+    var pollInterval = setInterval(function() {
+      forceFullscreenResize();
+      pollCount++;
+      if (pollCount > 15) clearInterval(pollInterval);
+    }, 400);
+
+    // Also watch for new video/iframe elements being added to the page
+    // dynamically (common with custom JS players).
+    if (window.MutationObserver) {
+      var observer = new MutationObserver(forceFullscreenResize);
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
   })();
   true;
 `;
@@ -179,7 +195,7 @@ export default function StreamPlayerScreen({ route, navigation }) {
 
 function getStyles(COLORS, insets = { top: 0, bottom: 0, left: 0, right: 0 }) {
   return StyleSheet.create({
-    watermark: { position: 'absolute', top: 12 + insets.top, right: 12 + insets.right, width: 32, height: 32, opacity: 0.55, zIndex: 9, borderRadius: 8 },
+    watermark: { position: 'absolute', top: 68 + insets.top, right: 12 + insets.right, width: 28, height: 28, opacity: 0.5, zIndex: 8, borderRadius: 6 },
     container: { flex: 1, backgroundColor: '#000' },
     webview: { flex: 1 },
     floatingBack: { position: 'absolute', top: 12, left: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
