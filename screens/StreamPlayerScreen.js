@@ -51,10 +51,33 @@ const INJECTED_CSS = `
     // vw/vh units are calculated once at load time and don't auto-update
     // reliably inside some WebView player embeds, so force a reflow.
     function forceFullscreenResize() {
+      var w = window.innerWidth + 'px';
+      var h = window.innerHeight + 'px';
       var els = document.querySelectorAll('video, iframe');
       for (var i = 0; i < els.length; i++) {
-        els[i].style.width = window.innerWidth + 'px';
-        els[i].style.height = window.innerHeight + 'px';
+        var el = els[i];
+        el.style.setProperty('width', w, 'important');
+        el.style.setProperty('height', h, 'important');
+        el.style.setProperty('max-width', 'none', 'important');
+        el.style.setProperty('max-height', 'none', 'important');
+        el.style.setProperty('object-fit', 'cover', 'important');
+        el.style.setProperty('position', 'fixed', 'important');
+        el.style.setProperty('top', '0', 'important');
+        el.style.setProperty('left', '0', 'important');
+
+        // Also strip sizing constraints from every parent wrapper up the
+        // chain, since many embeds nest the video inside fixed-size divs.
+        var parent = el.parentElement;
+        var depth = 0;
+        while (parent && depth < 5) {
+          parent.style.setProperty('width', '100%', 'important');
+          parent.style.setProperty('height', '100%', 'important');
+          parent.style.setProperty('max-width', 'none', 'important');
+          parent.style.setProperty('max-height', 'none', 'important');
+          parent.style.setProperty('overflow', 'visible', 'important');
+          parent = parent.parentElement;
+          depth++;
+        }
       }
     }
     window.addEventListener('resize', forceFullscreenResize);
