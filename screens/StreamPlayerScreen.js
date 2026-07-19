@@ -116,7 +116,7 @@ export default function StreamPlayerScreen({ route, navigation }) {
     // Lock to a single specific landscape orientation (not the generic
     // LANDSCAPE value, which allows switching between left/right and can
     // cause continuous re-orientation loops on some Android devices).
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT);
+    ScreenOrientation.unlockAsync();
     return () => {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
     };
@@ -218,7 +218,7 @@ export default function StreamPlayerScreen({ route, navigation }) {
 
 function getStyles(COLORS, insets = { top: 0, bottom: 0, left: 0, right: 0 }) {
   return StyleSheet.create({
-    watermark: { position: 'absolute', top: 68 + insets.top, right: 12 + insets.right, width: 28, height: 28, opacity: 0.5, zIndex: 8, borderRadius: 6 },
+    watermark: { position: 'absolute', top: 68 + insets.top, right: 12 + insets.right, width: 40, height: 40, opacity: 0.65, zIndex: 8, borderRadius: 8 },
     container: { flex: 1, backgroundColor: '#000' },
     webview: { flex: 1 },
     floatingBack: { position: 'absolute', top: 12, left: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },

@@ -10,6 +10,8 @@ import AdminStack from './navigation/AdminStack';
 import SettingsScreen from './screens/SettingsScreen';
 import StreamPlayerScreen from './screens/StreamPlayerScreen';
 import { COLORS, ThemeProvider } from './theme';
+import { useEffect } from 'react';
+import { registerLiveMatchBackgroundTask, checkNowIfAppOpen } from './utils/liveMatchNotifications';
 
 const RootStack = createNativeStackNavigator();
 
@@ -26,6 +28,11 @@ const navTheme = {
 };
 
 export default function App() {
+  useEffect(() => {
+    registerLiveMatchBackgroundTask();
+    checkNowIfAppOpen();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <AuthProvider>
