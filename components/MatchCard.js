@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, TouchableOpacity, Animated, Share } from
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme';
 import { useFavorites } from '../context/FavoritesContext';
+import HighlightsSection from './HighlightsSection';
 
 const logoCache = {};
 
@@ -86,6 +87,7 @@ export default function MatchCard({ match, onPress, showActions = true }) {
           <Text style={styles.teamName} numberOfLines={2}>{away}</Text>
         </View>
       </View>
+      {isFinished && <HighlightsSection home={home} away={away} />}
       {isLive && <View style={styles.goldBar} />}
       {showActions && (
         <View style={styles.actionsRow}>
